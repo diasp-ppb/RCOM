@@ -58,33 +58,44 @@ int main(int argc, char** argv)
       exit(-1);
     }
 
-    /*for (i = 0; i < 255; i++) {
-      buf[i] = 'a';
-    }*/
+ 
 
 	gets(buf);
     
 	int k;
 	int length = strlen(buf);
 
-	printf("tamanho: %d \n", length);
+	printf("tamanho: %d \n", length+1);
 	res = 0;
 	
-	for(k=0;k<length;k++)
-	{  		
-		char test = buf[k];
-    	res += write(fd,&test,sizeof(char));
+	while(!res){
+	res=write(fd, buf, length+1);
 	}
 
-	char t = '\0';
-	res += write(fd,&t,sizeof(char)); 
-    
-	printf("%d bytes written\n", res);
-    
+
+	 i = 0;
+    int total = 0;
+    while (STOP==FALSE) 
+    {       /* loop for input */
+      res = read(fd, &c, sizeof(char));    
+      buf[i] = c;
+      total += res;
+      if ('\0' == c) 
+		STOP=TRUE;
+      i++;
+    }
+
+
+   printf("Received %d bytes: %s\n", total, buf);
+	
+
+
+
     if ( tcsetattr(fd,TCSANOW,&oldtio) == -1) {
       perror("tcsetattr");
       exit(-1);
     }
+	
     close(fd);
     return 0;
 }
