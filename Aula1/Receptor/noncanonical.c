@@ -75,15 +75,16 @@ int main(int argc, char** argv)
 
 
     int i = 0;
-    char c;
+    char ch = 'a';
     int total = 0;
     while (STOP==FALSE) 
     {       /* loop for input */
-      res = read(fd, &c, sizeof(char));   /* returns after 5 chars have been input */
-      
-      buf[i] = c;
+      res = read(fd, &ch, 1);   /* returns after 5 chars have been input */
+      if(res <= 0)
+	continue;
+      buf[i] = ch;
       total += res;
-      if ('\0' == c) 
+      if ('\0' == ch) 
 	STOP=TRUE;
       i++;
     }
@@ -93,6 +94,17 @@ int main(int argc, char** argv)
   /* 
     O ciclo WHILE deve ser alterado de modo a respeitar o indicado no guião 
   */
+
+    int k = 0;
+    int totalsent = 0;
+    for(k = 0; k < total; k++)
+    {  		
+	char c = buf[k];
+    	totalsent += write(fd,&c,sizeof(char));
+    }
+
+
+    printf("Sent %d bytes: %s\n", totalsent, buf);
 
 
     tcsetattr(fd,TCSANOW,&oldtio);
