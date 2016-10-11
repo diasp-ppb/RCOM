@@ -8,11 +8,13 @@
 #include <stdlib.h>
 #include <unistd.h>
 #include <string.h>
+#include "util.h"
 
 #define BAUDRATE B38400
 #define _POSIX_SOURCE 1 /* POSIX compliant source */
 #define FALSE 0
 #define TRUE 1
+
 
 volatile int STOP=FALSE;
 
@@ -111,4 +113,16 @@ sleep(2);
     tcsetattr(fd,TCSANOW,&oldtio);
     close(fd);
     return 0;
+}
+
+char* createUA()
+{
+	char* UA = malloc(5*sizeof(char));
+	UA[0] = F_FLAG;
+	UA[1] = A_EM;
+	UA[2] = C_UA;
+	UA[3] = A_EM ^ C_UA;
+	UA[4] = F_FLAG;
+
+	return UA;
 }
