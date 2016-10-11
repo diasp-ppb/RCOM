@@ -15,8 +15,21 @@
 #define FALSE 0
 #define TRUE 1
 
+#define START 0
+#define FLAG_RCV 1
+#define A_RCV 2
+#define C_RCV 3
+#define BCC_RCV 4
+#define COMPLETE 5
+
 
 volatile int STOP=FALSE;
+
+int receiveFlag(int fd);
+int receiveA(int fd, char *ch);
+int receiveC(int fd, char *ch);
+int checkBCC(int fd, char A, char C);
+int receivePackage(int fd);
 
 int main(int argc, char** argv)
 {
@@ -75,13 +88,15 @@ int main(int argc, char** argv)
 
     printf("New termios structure set\n");
 
+	receivePackage(fd);
 
+/*
     int i = 0;
     char ch = 'a';
     int total = 0;
     while (STOP==FALSE) 
-    {       /* loop for input */
-      res = read(fd, &ch, 1);   /* returns after 5 chars have been input */
+    {       // loop for input 
+      res = read(fd, &ch, 1);   // returns after 5 chars have been input 
       if(res <= 0)
 	continue;
       buf[i] = ch;
@@ -93,9 +108,9 @@ int main(int argc, char** argv)
 
 
    printf("Received %d bytes: %s\n", total, buf);
-  /* 
-    O ciclo WHILE deve ser alterado de modo a respeitar o indicado no guião 
-  */
+  
+    //O ciclo WHILE deve ser alterado de modo a respeitar o indicado no guião 
+  
 
     int k = 0;
     int totalsent = 0;
@@ -106,7 +121,7 @@ int main(int argc, char** argv)
     }
 
 
-    printf("Sent %d bytes: %s\n", totalsent, buf);
+    printf("Sent %d bytes: %s\n", totalsent, buf);*/
 sleep(2);
 
 
@@ -126,3 +141,84 @@ char* createUA()
 
 	return UA;
 }
+
+int receivePackage(int fd)
+{
+	int status = 0;
+	int res;
+	char A, C;
+	do
+	{
+		switch(status)
+		{
+			case START:
+			status = receiveFlag(fd);
+			break;
+			case FLAG_RCV:
+			status = receiveA(fd, &A);
+			break;
+			case A_RCV:
+			status = receiveC(fd, &C);
+			break;
+			case C_RCV:
+			status = checkBCC(fd, A, C);
+			break;
+			case BCC_RCV:
+			res = receiveFlag(fd);
+			if(res == FLAG_RCV)
+ 			{
+				printf("BCC Checked successfully\n");
+				status = COMPLETE;
+			}
+			break;
+		}
+	}while(status != COMPLETE);
+
+	return 0;
+}
+
+int receiveFlag(int fd)
+{
+	char ch;
+	read(fd, &ch, 1);
+
+	if(ch == F_FLAG)
+		return A_RCV;
+	else
+		return FLAG_RCV;
+}
+
+int receiveA(int fd, char* ch)
+{
+	int res;
+	res = read(fd, ch, 1);
+	if(res <= 0)
+		return START;
+	else if(*ch == F_FLAG)
+		return F_FLAG;
+	return C_RCV;
+}
+
+int receiveC(int fd, char* ch)
+{
+	int res;
+	res = read(fd, ch, 1);
+	if(res <= 0)
+		return START;
+	else if(*ch == F_FLAG)
+		return F_FLAG;
+	return BCC_RCV;
+}
+
+int checkBCC(int fd, char A, char C)
+{
+	char ch;
+	read(fd, &ch, 1);
+	char expected = A ^ C;
+	if(ch == expected)
+		return COMPLETE;
+	else
+		return -1;
+}
+
+
