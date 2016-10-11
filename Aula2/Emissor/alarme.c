@@ -12,7 +12,7 @@ void atende()                   // atende alarme
 }
 
 
-main()
+void installAlarm()
 {
 
 (void) signal(SIGALRM, atende);  // instala  rotina que atende interrupcao
