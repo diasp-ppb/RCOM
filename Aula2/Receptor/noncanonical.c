@@ -30,6 +30,7 @@ int receiveA(int fd, char *ch);
 int receiveC(int fd, char *ch);
 int checkBCC(int fd, char A, char C);
 int receivePackage(int fd);
+int createAndSendUA(int fd);
 
 int main(int argc, char** argv)
 {
@@ -88,7 +89,9 @@ int main(int argc, char** argv)
 
     printf("New termios structure set\n");
 
-	receivePackage(fd);
+	if (receivePackage(fd) == 0)
+		createAndSendUA(fd);
+		
 
 /*
     int i = 0;
@@ -128,18 +131,6 @@ sleep(2);
     tcsetattr(fd,TCSANOW,&oldtio);
     close(fd);
     return 0;
-}
-
-char* createUA()
-{
-	char* UA = malloc(5*sizeof(char));
-	UA[0] = F_FLAG;
-	UA[1] = A_EM;
-	UA[2] = C_UA;
-	UA[3] = A_EM ^ C_UA;
-	UA[4] = F_FLAG;
-
-	return UA;
 }
 
 int receivePackage(int fd)
@@ -221,4 +212,32 @@ int checkBCC(int fd, char A, char C)
 		return -1;
 }
 
+int sendMensage(int fd, char *message, int length)
+{
+	int res  = 0;
+	while(res <= 0)
+		res = write(fd, message, length);
+		
+	return res;
+}
+
+char* createUA()
+{
+	char* UA = malloc(5*sizeof(char));
+	UA[0] = F_FLAG;
+	UA[1] = A_EM;
+	UA[2] = C_UA;
+	UA[3] = A_EM ^ C_UA;
+	UA[4] = F_FLAG;
+
+	return UA;
+}
+
+int createAndSendUA(int fd)
+{
+	char * msg  = createUA();
+ 	int res = sendMensage(fd,msg,5);
+	free(msg);
+	return res;
+}
 
