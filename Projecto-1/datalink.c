@@ -69,8 +69,6 @@ int llopen(int flag, int fd)
     llopenReceiver(fd);
   else
     return 1;
-
-  return 0;
 }
 
 int main(int argc, char** argv)
@@ -85,7 +83,7 @@ int main(int argc, char** argv)
     exit(1);
   }
 
-  fd = open(argv[1], O_RDWR | O_NOCTTY | O_NONBLOCK);
+  fd = open(argv[1], O_RDWR | O_NOCTTY);
   if (fd <0) {perror(argv[1]); exit(-1); }
 
   if ( tcgetattr(fd,&oldtio) == -1) { /* save current port settings */
@@ -111,7 +109,7 @@ int main(int argc, char** argv)
   }
 
   //TODO: TRANSMITTER OU RECEIVER
-  llopen(TRANSMITTER, fd);
+  llopen(RECEIVER, fd);
 
   if ( tcsetattr(fd,TCSANOW,&oldtio) == -1) {
     perror("tcsetattr");
@@ -145,7 +143,8 @@ int llopenTransmitter(int fd)
 
 int llopenReceiver(int fd)
 {
-  if(receiveSupervision(fd) == 0)
+  flag = 0; //To dont break processing package loop
+  if(receiveSupervision(fd) == COMPLETE)
     createAndSendUA(fd);
 
   return 0;
@@ -181,17 +180,18 @@ int receiveSupervision(int fd)
 			}
 			break;
 		}
+	printf("Flag %d\n",flag);
 	}while(status != COMPLETE && flag == 0);
-
+	printf("status %d\n",status);
 	return status;
 }
 
 int receiveFlag(int fd)
-{//printf("antes FLAG \n");
+{printf("antes FLAG \n");
 	char ch;
 	read(fd, &ch, 1);
 
-	//printf("%x \n",ch);
+	printf("%x \n",ch);
 	if(ch == F_FLAG)
 		return A_RCV;
 	else
@@ -202,7 +202,7 @@ int receiveA(int fd, char* ch)
 {
 	int res;
 	res = read(fd, ch, 1);
-	//printf("%x \n",*ch);
+	printf("read %x \n",*ch);
 	if(res <= 0)
 		return START;
 	else if(*ch == F_FLAG)
@@ -215,7 +215,7 @@ int receiveC(int fd, char* ch)
 
 	int res;
 	res = read(fd, ch, 1);
-	printf("%x \n",*ch);
+	printf("receiveC %x \n",*ch);
 	if(res <= 0)
 		return START;
 	else if(*ch == F_FLAG)
@@ -269,10 +269,12 @@ int createAndSendSet(int fd)
 }
 
 int createAndSendUA(int fd)
-{
+{	
+	
 	char * msg  = createUA();
  	int res = sendMensage(fd,msg,5);
 	free(msg);
+	printf("Package UA sent \n");
 	return res;
 }
 
