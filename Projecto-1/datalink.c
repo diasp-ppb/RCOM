@@ -26,12 +26,14 @@
 #define TRANSMITTER 0
 #define RECEIVER 1
 
+#define SET_PACK 0
+#define UA_PACK 1
+
 volatile int STOP=FALSE;
 
 char * createSet();
 int sendMensage(int fd, char *message, int length);
-int createAndSendSet(int fd);
-int createAndSendUA(int fd);
+int createAndSendPackage(int fd, int type);
 int receiveFlag(int fd);
 int receiveA(int fd, char *ch);
 int receiveC(int fd, char *ch);
@@ -67,7 +69,6 @@ int llopen(int flag, int fd)
     llopenTransmitter(fd);
   else if(flag == RECEIVER)
     llopenReceiver(fd);
-  else
     return 1;
 }
 
@@ -83,7 +84,7 @@ int main(int argc, char** argv)
     exit(1);
   }
 
-  fd = open(argv[1], O_RDWR | O_NOCTTY);
+  fd = open(argv[1], O_RDWR | O_NOCTTY|O_NONBLOCK);
   if (fd <0) {perror(argv[1]); exit(-1); }
 
   if ( tcgetattr(fd,&oldtio) == -1) { /* save current port settings */
@@ -132,7 +133,7 @@ int llopenTransmitter(int fd)
      {
        alarm(3);
        flag=0;
-       createAndSendSet(fd);
+        createAndSendPackage(fd,SET_PACK);
      }
      noResponse = receiveSupervision(fd);
 	}
@@ -145,7 +146,7 @@ int llopenReceiver(int fd)
 {
   flag = 0; //To dont break processing package loop
   if(receiveSupervision(fd) == COMPLETE)
-    createAndSendUA(fd);
+    createAndSendPackage(fd,UA_PACK);
 
   return 0;
 }
@@ -180,18 +181,19 @@ int receiveSupervision(int fd)
 			}
 			break;
 		}
-	printf("Flag %d\n",flag);
+	//printf("Flag %d\n",flag);
 	}while(status != COMPLETE && flag == 0);
-	printf("status %d\n",status);
+	//printf("status %d\n",status);
 	return status;
 }
 
 int receiveFlag(int fd)
-{printf("antes FLAG \n");
+{
+	//printf("antes FLAG \n");
 	char ch;
 	read(fd, &ch, 1);
 
-	printf("%x \n",ch);
+	//printf("%x \n",ch);
 	if(ch == F_FLAG)
 		return A_RCV;
 	else
@@ -202,7 +204,7 @@ int receiveA(int fd, char* ch)
 {
 	int res;
 	res = read(fd, ch, 1);
-	printf("read %x \n",*ch);
+	//printf("read %x \n",*ch);
 	if(res <= 0)
 		return START;
 	else if(*ch == F_FLAG)
@@ -215,7 +217,7 @@ int receiveC(int fd, char* ch)
 
 	int res;
 	res = read(fd, ch, 1);
-	printf("receiveC %x \n",*ch);
+	//printf("receiveC %x \n",*ch);
 	if(res <= 0)
 		return START;
 	else if(*ch == F_FLAG)
@@ -260,23 +262,17 @@ char* createUA()
 	return UA;
 }
 
-int createAndSendSet(int fd)
-{
-	char * msg  = createSet();
+int createAndSendPackage(int fd,int type)
+{	
+	char * msg;
+	if(SET_PACK) msg = createSet();
+	else if (UA_PACK) msg = createUA();
  	int res = sendMensage(fd,msg,5);
 	free(msg);
 	return res;
 }
 
-int createAndSendUA(int fd)
-{	
-	
-	char * msg  = createUA();
- 	int res = sendMensage(fd,msg,5);
-	free(msg);
-	printf("Package UA sent \n");
-	return res;
-}
+
 
 int sendMensage(int fd, char *message, int length)
 {
