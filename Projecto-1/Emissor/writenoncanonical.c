@@ -221,6 +221,7 @@ int checkBCC(int fd, char A, char C)
 	read(fd, &ch, 1);
 	char expected = A ^ C;
 
+printf("%x \n",expected);
 	if(ch == expected)
 		return COMPLETE;
 	else
@@ -242,5 +243,4 @@ void installAlarm()
 {
   (void) signal(SIGALRM, atende);  // instala  rotina que atende interrupcao
   printf("Vou terminar.\n");
-
 }
