@@ -77,11 +77,17 @@ int main(int argc, char** argv)
   int fd;
   struct termios oldtio,newtio;
 
-  if ( (argc < 2) ||
+  if ( (argc < 3) ||
        ((strcmp("/dev/ttyS0", argv[1])!=0) &&
         (strcmp("/dev/ttyS1", argv[1])!=0) )) {
-    printf("Usage:\tnserial SerialPort\n\tex: nserial /dev/ttyS1\n");
+    printf("Usage:\tnserial SerialPort\n\tex: nserial /dev/ttyS0  RECEIVER||TRANSMITTER\n");
     exit(1);
+  }
+
+  if( (strcmp("RECEIVER", argv[2]) != 0) && (strcmp("TRANSMITTER", argv[2]) != 0))
+  {
+     printf("choose RECEIVER or TRANSMITTER\n");
+     exit(2);
   }
 
   fd = open(argv[1], O_RDWR | O_NOCTTY|O_NONBLOCK);
@@ -109,10 +115,16 @@ int main(int argc, char** argv)
     exit(-1);
   }
 
+  int mode = 0;
+  if(strcmp("RECEIVER", argv[2]) == 0)
+     mode = RECEIVER;
+  else
+     mode = TRANSMITTER;
+  
   //TODO: TRANSMITTER OU RECEIVER
-  llopen(RECEIVER, fd);
+  llopen(mode, fd);
 
-  sleep(5);
+  sleep(2);
   if ( tcsetattr(fd,TCSANOW,&oldtio) == -1) {
     perror("tcsetattr");
     exit(-1);
@@ -175,7 +187,8 @@ int receiveSupervision(int fd)
 			case BCC_RCV:
 			status = receiveFlag(fd);
 			if(status == FLAG_RCV)
-				status = COMPLETE;
+				{status = COMPLETE;
+				printf("full package!\n");}
 			break;
 		}
 	
