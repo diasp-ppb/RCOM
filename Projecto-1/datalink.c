@@ -112,6 +112,7 @@ int main(int argc, char** argv)
   //TODO: TRANSMITTER OU RECEIVER
   llopen(RECEIVER, fd);
 
+  sleep(2);
   if ( tcsetattr(fd,TCSANOW,&oldtio) == -1) {
     perror("tcsetattr");
     exit(-1);
@@ -181,19 +182,20 @@ int receiveSupervision(int fd)
 			}
 			break;
 		}
-	//printf("Flag %d\n",flag);
+	printf("Flag %d \n",flag);
+	printf("status %d \n",status);
 	}while(status != COMPLETE && flag == 0);
-	//printf("status %d\n",status);
+	
 	return status;
 }
 
 int receiveFlag(int fd)
 {
-	//printf("antes FLAG \n");
+	printf("antes FLAG \n");
 	char ch;
 	read(fd, &ch, 1);
 
-	//printf("%x \n",ch);
+	printf("Flag value: %x \n",ch);
 	if(ch == F_FLAG)
 		return A_RCV;
 	else
@@ -204,11 +206,11 @@ int receiveA(int fd, char* ch)
 {
 	int res;
 	res = read(fd, ch, 1);
-	//printf("read %x \n",*ch);
+	printf("read %x \n",*ch);
 	if(res <= 0)
 		return START;
 	else if(*ch == F_FLAG)
-		return F_FLAG;
+		return FLAG_RCV;
 	return C_RCV;
 }
 
@@ -217,11 +219,11 @@ int receiveC(int fd, char* ch)
 
 	int res;
 	res = read(fd, ch, 1);
-	//printf("receiveC %x \n",*ch);
+	printf("receiveC %x \n",*ch);
 	if(res <= 0)
 		return START;
 	else if(*ch == F_FLAG)
-		return F_FLAG;
+		return FLAG_RCV;
 	return BCC_RCV;
 }
 
@@ -234,7 +236,7 @@ int checkBCC(int fd, char A, char C)
 	if(ch == expected)
 		return COMPLETE;
 	else
-		return -1;
+		return START;
 }
 
 char* createSet()
