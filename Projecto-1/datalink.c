@@ -28,6 +28,7 @@
 
 #define SET_PACK 0
 #define UA_PACK 1
+#define DISC_PACK 2
 
 volatile int STOP=FALSE;
 
@@ -47,6 +48,8 @@ void atende();
 
 int llopenTransmitter(int fd);
 int llopenReceiver(int fd);
+int llcloseTransmitter(int fd);
+int llcloseReceiver(int fd);
 
 void atende()                   // atende alarme
 {
@@ -69,8 +72,18 @@ int llopen(int flag, int fd)
     llopenTransmitter(fd);
   else if(flag == RECEIVER)
     llopenReceiver(fd);
-    return 1;
+  return 1;
 }
+
+int llclose(int flag, int fd)
+{
+	if(flag == TRANSMITTER)
+		llcloseTransmitter(fd);
+	else if(flag == RECEIVER)
+		llcloseReceiver(fd);
+		return 1;
+}
+
 
 int main(int argc, char** argv)
 {
@@ -120,9 +133,11 @@ int main(int argc, char** argv)
      mode = RECEIVER;
   else
      mode = TRANSMITTER;
-  
+
   //TODO: TRANSMITTER OU RECEIVER
   llopen(mode, fd);
+
+	llclose(mode, fd);
 
   sleep(2);
   if ( tcsetattr(fd,TCSANOW,&oldtio) == -1) {
@@ -153,8 +168,6 @@ int llopenTransmitter(int fd)
   return 0;
 }
 
-
-
 int llopenReceiver(int fd)
 {
   flag = 0; //To dont break processing package loop
@@ -163,6 +176,42 @@ int llopenReceiver(int fd)
 
   return 0;
 }
+
+int llcloseTransmitter(int fd)
+{
+	int noResponse = 1;
+
+	installAlarm();
+
+ 	while(conta < 4 && noResponse != COMPLETE)
+  {
+	   if(flag)
+     {
+       alarm(3);
+       flag=0;
+        createAndSendPackage(fd,DISC_PACK);
+     }
+     noResponse = receiveSupervision(fd);
+	}
+
+	createAndSendPackage(fd, UA_PACK);
+  return 0;
+}
+
+int llcloseReceiver(int fd)
+{
+	flag = 0; //To dont break processing package loop
+  if(receiveSupervision(fd) == COMPLETE)
+    createAndSendPackage(fd,DISC_PACK);
+
+	if(receiveSupervision(fd) == COMPLETE)
+	{
+		printf("received UA\n");
+		return 0;
+	}
+  return 1;
+}
+
 
 int receiveSupervision(int fd)
 {
@@ -191,7 +240,7 @@ int receiveSupervision(int fd)
 				printf("full package!\n");}
 			break;
 		}
-	
+
 	}while(status != COMPLETE && flag == 0);
 	//printf("Flag %d \n",flag);
 	printf("status %d \n",status);
@@ -273,11 +322,27 @@ char* createUA()
 	return UA;
 }
 
+char* createDisc()
+{
+	char* UA = malloc(5*sizeof(char));
+	UA[0] = F_FLAG;
+	UA[1] = A_EM;
+	UA[2] = C_DISC;
+	UA[3] = A_EM ^ C_UA;
+	UA[4] = F_FLAG;
+
+	return UA;
+}
+
 int createAndSendPackage(int fd,int type)
-{	
+{
 	char * msg;
-	if(SET_PACK == type) msg = createSet();
-	else if (UA_PACK == type) msg = createUA();
+	if(SET_PACK == type)
+		msg = createSet();
+	else if (UA_PACK == type)
+		msg = createUA();
+	else if(DISC_PACK == type)
+		msg = createDisc();
  	int res = sendMensage(fd,msg,5);
 	free(msg);
 	return res;
@@ -286,11 +351,11 @@ int createAndSendPackage(int fd,int type)
 
 
 int sendMensage(int fd, char *message, int length)
-{	
+{
 	int res  = 0;
 	while(res <= 0){
 	res=write(fd, message, length);
 	printf("sending...\n");
 	}
-  return res;
+  return 0;
 }
