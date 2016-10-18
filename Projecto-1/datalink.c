@@ -193,12 +193,12 @@ int llcloseTransmitter(int fd)
         createAndSendPackage(fd,DISC_PACK);
      }
      noResponse = receiveSupervision(fd);
-		 if(noResponse = COMPLETE)
+		 if(noResponse == COMPLETE)
 		 printf("received DISC \n");
 	}
 
-int i = 0;
-for(i ; i < 3; i++){
+int i;
+for(i= 0; i < 3; i++){
 	createAndSendPackage(fd,UA_PACK);//TODO NEED FIX SHOULD ONLY SEND ONCE
 }
 
