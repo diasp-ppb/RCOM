@@ -61,7 +61,7 @@ void atende()                   // atende alarme
 void installAlarm()
 {
   (void) signal(SIGALRM, atende);  // instala  rotina que atende interrupcao
-  printf("Vou terminar.\n");
+ printf("Alarme Instalado\n");
 }
 
 
@@ -81,6 +81,7 @@ int llclose(int flag, int fd)
 		llcloseTransmitter(fd);
 	else if(flag == RECEIVER)
 		llcloseReceiver(fd);
+		sleep(5);
 		return 1;
 }
 
@@ -139,7 +140,7 @@ int main(int argc, char** argv)
 
 	llclose(mode, fd);
 
-  sleep(2);
+
   if ( tcsetattr(fd,TCSANOW,&oldtio) == -1) {
     perror("tcsetattr");
     exit(-1);
@@ -192,9 +193,18 @@ int llcloseTransmitter(int fd)
         createAndSendPackage(fd,DISC_PACK);
      }
      noResponse = receiveSupervision(fd);
+		 if(noResponse = COMPLETE)
+		 printf("received DISC \n");
 	}
 
-	createAndSendPackage(fd, UA_PACK);
+int i = 0;
+for(i ; i < 3; i++){
+	createAndSendPackage(fd,UA_PACK);//TODO NEED FIX SHOULD ONLY SEND ONCE
+}
+
+
+
+	printf("sent UA \n");
   return 0;
 }
 
@@ -344,6 +354,7 @@ int createAndSendPackage(int fd,int type)
 	else if(DISC_PACK == type)
 		msg = createDisc();
  	int res = sendMensage(fd,msg,5);
+	sleep(1);
 	free(msg);
 	return res;
 }
