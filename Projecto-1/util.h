@@ -10,4 +10,6 @@
 #define C_REJ0 0x01
 #define C_REJ1 0x81
 #define INF_CS0 0x00
-#define INF_CS1 0x40  
+#define INF_CS1 0x40
+#define XOR_7E_20 0x5E
+#define XOR_7D_20 0x5D

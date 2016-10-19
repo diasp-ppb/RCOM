@@ -63,6 +63,9 @@ int llread(int fd,char *buffer);
 int stuffing(unsigned char * frame, int length);
 int deStuffing(unsigned char * frame, int length);
 
+int packagePayLoad(int C, int size, char * payload);
+int createSendStartEnd(int fd, char *filename, int length, unsigned int size, int type);
+
 void atende()                   // atende alarme
 {
 	printf("alarme # %d\n", conta);
@@ -97,6 +100,17 @@ int llclose(int flag, int fd)
 		return 1;
 }
 
+
+int llwrite(int fd, char *buffer, int length){
+	createSendStartEnd(fd, "giro", 4, length, START);
+	return 0;
+}
+
+int llread(int fd,char *buffer){
+	int i = 0;
+	while(read(fd, &buffer[i], 1)){}
+	return 0;
+}
 
 int main(int argc, char** argv)
 {
@@ -152,6 +166,23 @@ int main(int argc, char** argv)
 
 	llclose(mode, fd);
 */
+	if(mode == TRANSMITTER){
+	char *test = malloc(2);
+	test[0] = 'a';
+	test[1] = 'b';
+	llwrite(fd, test, 2);
+	free(test);
+	}
+	else if(mode == RECEIVER){
+	char* test = malloc(20);
+	llread(fd, test);
+	int t;
+	for(t= 0; t < 20; t++){
+		printf("t: %x \n",test[t]);
+	}
+	free(test);
+	}
+
 	unsigned char *jesus = malloc(5);
 	jesus [0] = 0xF4;
 	jesus [1] = 0x7E;
@@ -260,19 +291,6 @@ int llcloseReceiver(int fd)
 	}
   return 1;
 }
-
-int llwrite(int fd, char *buffer, int length){
-
-	return 0;
-}
-int llread(int fd,char *buffer){
-	return 0;
-}
-/*
-char * buildIpackage(char * message,int length){
-
-}
-*/
 
 int stuffing(unsigned char * frame, int length){
 
@@ -467,11 +485,49 @@ int createAndSendPackage(int fd,int type)
 	free(msg);
 	return res;
 }
-/*
-int createSendStartEnd(char *filename,int length, unsigned int size,int type){
-		int quoc =
-}*/
 
+int createSendStartEnd(int fd, char *filename, int length, unsigned int size, int type){
+	char * start = malloc(length+10);
+	start [0] = type;
+	start [1] = 0;
+	start [2] = 0x04;
+	start [3] = size % 0x100;
+	start [4] = start[3] % 0x100;
+	start [5] = (size  % 0x10000) % 0x100;
+	start [6] = size % 0x1000000;
+	start [7] = 1;
+	start [8] = length;
+
+	int i;
+	for ( i = 0; i < length; i++){
+		start[9+i] = filename[i];
+	}
+
+	start[9 + length] = makeBCC2(start, length + 9);
+	int lgt = packagePayLoad(0, (length + 10), start);
+	sendMensage(fd, start, lgt);
+	free(start);
+	return 0; //TODO
+}
+
+int packagePayLoad(int C, int size, char * payload){
+	char * buffer = malloc(size + 5);
+	buffer[0] = F_FLAG;
+	buffer[1] = A_EM;
+	buffer[2] = C;
+	buffer[3] = buffer[1] ^ buffer[2];
+	int i;
+	for(i = 0; i < size; i++)
+	{
+		buffer[i + 4] = payload[i];
+	}
+
+	buffer[3 + size] = F_FLAG;
+
+	free(payload);
+	payload = buffer;
+	return (size + 5);
+}
 int sendMensage(int fd, char *message, int length)
 {
 	int res  = 0;
