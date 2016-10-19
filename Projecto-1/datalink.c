@@ -34,8 +34,13 @@
 #define START_PACK 2
 #define END_PACK 3
 
+#define RR0 0x03
+#define RR1 0x83
 
-volatile int STOP=FALSE;
+#define REJ0 0x01
+#define REJ1 0x81
+
+
 
 char * createSet();
 int sendMensage(int fd, char *message, int length);
@@ -44,10 +49,11 @@ int receiveFlag(int fd);
 int receiveA(int fd, char *ch);
 int receiveC(int fd, char *ch);
 int checkBCC(int fd, char A, char C);
-int receiveSupervision(int fd);
-
+int receiveSupervision(int fd, char * C);
+int CHECK_RR_REJCT(int C, char ch);
 
 volatile int flag=1, conta=1;
+
 void installAlarm();
 void atende();
 
@@ -57,14 +63,18 @@ int llopenReceiver(int fd);
 int llcloseTransmitter(int fd);
 int llcloseReceiver(int fd);
 
-int llwrite(int fd, char *buffer, int length);
-int llread(int fd,char *buffer);
+int llwrite(int fd, char *buffer, int length,int C);
+int llread(int fd, char *buffer);
+int llstart(int fd, char* filename, int length, unsigned int size, int type);
 
-int stuffing(unsigned char * frame, int length);
-int deStuffing(unsigned char * frame, int length);
+int stuffing(char * package, int length);
+int deStuffing(char * package, int length);
 
 int packagePayLoad(int C, int size, char * payload);
-int createSendStartEnd(int fd, char *filename, int length, unsigned int size, int type);
+int createStart(char *filename, int length, unsigned int size, int type,char *package);
+
+int getTrama(int fd, char* trama);
+int extractPackage(char *package, char *trama,int length);
 
 void atende()                   // atende alarme
 {
@@ -73,8 +83,7 @@ void atende()                   // atende alarme
 	conta++;
 }
 
-void installAlarm()
-{
+void installAlarm(){
   (void) signal(SIGALRM, atende);  // instala  rotina que atende interrupcao
  printf("Alarme Instalado\n");
 }
@@ -101,14 +110,55 @@ int llclose(int flag, int fd)
 }
 
 
-int llwrite(int fd, char *buffer, int length){
-	createSendStartEnd(fd, "giro", 4, length, START);
-	return 0;
+int llwrite(int fd, char *buffer, int length,int C){
+
+char * copy = malloc(length);
+memcpy(copy,buffer,length);
+int size = stuffing(copy, length);
+size = packagePayLoad(C, size, copy);
+
+int noResponse = 1;
+char ch;
+	installAlarm();
+
+	while(conta < 4  && noResponse != COMPLETE){
+		if(flag){
+			alarm(3);
+			flag=0;
+			sendMensage(fd,copy,size);
+		}
+
+	int	r = receiveSupervision(fd,&ch);
+		if(r == COMPLETE){
+			noResponse = CHECK_RR_REJCT(C,ch);
+		}
+	}
+
+free(copy);
+return 0;//TODO retornar o sucesso da recepçao
 }
 
 int llread(int fd,char *buffer){
-	int i = 0;
-	while(read(fd, &buffer[i], 1)){}
+	//TODO
+	char *trama  = malloc(trama,1);
+ 	int size  = getTrama(fd, trama);
+
+	if(size < 5)
+	{
+		printf("Wrong packageSize: size: %d\n",size);
+	}
+
+	char *package = malloc(package,1);
+	size = extractPackage(package,trama,size);
+
+	size = deStuffing(package, size);
+
+	buffer = realloc(buffer,size);
+	
+	memcpy(buffer, package,size);
+	free(trama);
+	free(package);
+	printf("FIM READ\n");
 	return 0;
 }
 
@@ -161,16 +211,16 @@ int main(int argc, char** argv)
   else
      mode = TRANSMITTER;
 
-
-  llopen(mode, fd);
-
+/*
+ 	llopen(mode, fd);
 	llclose(mode, fd);
-/* TEST - DO NOT UNCOMMENT
+*/
+//TEST - DO NOT UNCOMMENT
 	if(mode == TRANSMITTER){
 	char *test = malloc(2);
 	test[0] = 'a';
 	test[1] = 'b';
-	llwrite(fd, test, 2);
+	llwrite(fd, test, 2,0);
 	free(test);
 	}
 	else if(mode == RECEIVER){
@@ -182,8 +232,8 @@ int main(int argc, char** argv)
 	}
 	free(test);
 	}
-
-	unsigned char *jesus = malloc(5);
+/*
+	 char *jesus = malloc(5);
 	jesus [0] = 0xF4;
 	jesus [1] = 0x7E;
 	jesus [2] = 0x7D;
@@ -197,7 +247,7 @@ int main(int argc, char** argv)
 
 	int t;
 	for(t= 0; t < l; t++){
-		printf("t: %x \n",jesus[t]);
+		printf("t: %x \n",(unsigned char)jesus[t]);
 	}
 
 	l = deStuffing(jesus,l);
@@ -206,12 +256,14 @@ int main(int argc, char** argv)
 printf("deStuffing: SIZE: %d \n",l);
 
 	for(t= 0; t < l; t++){
-		printf("t: %x \n",jesus[t]);
+		printf("t: %x \n",(unsigned char)jesus[t]);
 	}
+
 
 	free(jesus);
 */
-  if ( tcsetattr(fd,TCSANOW,&oldtio) == -1) {
+  if ( tcsetattr(fd,T
+		CSANOW,&oldtio) == -1) {
     perror("tcsetattr");
     exit(-1);
   }
@@ -234,7 +286,8 @@ int llopenTransmitter(int fd)
        flag=0;
         createAndSendPackage(fd,SET_PACK);
      }
-     noResponse = receiveSupervision(fd);
+		 char C;
+     noResponse = receiveSupervision(fd,&C);
 	}
   return 0;
 }
@@ -242,7 +295,8 @@ int llopenTransmitter(int fd)
 int llopenReceiver(int fd)
 {
   flag = 0; //To dont break processing package loop
-  if(receiveSupervision(fd) == COMPLETE)
+	char C;
+  if(receiveSupervision(fd,&C) == COMPLETE)
     createAndSendPackage(fd,UA_PACK);
 
   return 0;
@@ -251,7 +305,7 @@ int llopenReceiver(int fd)
 int llcloseTransmitter(int fd)
 {
 	int noResponse = 1;
-
+	char C;
 	installAlarm();
 
  	while(conta < 4 && noResponse != COMPLETE)
@@ -262,7 +316,7 @@ int llcloseTransmitter(int fd)
        flag=0;
         createAndSendPackage(fd,DISC_PACK);
      }
-     noResponse = receiveSupervision(fd);
+     noResponse = receiveSupervision(fd,&C);
 		 if(noResponse == COMPLETE)
 		 printf("received DISC \n");
 	}
@@ -271,9 +325,6 @@ int i;
 for(i= 0; i < 3; i++){
 	createAndSendPackage(fd,UA_PACK);//TODO NEED FIX SHOULD ONLY SEND ONCE
 }
-
-
-
 	printf("sent UA \n");
   return 0;
 }
@@ -281,10 +332,11 @@ for(i= 0; i < 3; i++){
 int llcloseReceiver(int fd)
 {
 	flag = 0; //To dont break processing package loop
-  if(receiveSupervision(fd) == COMPLETE)
+	char C;
+  if(receiveSupervision(fd,&C) == COMPLETE)
     createAndSendPackage(fd,DISC_PACK);
 
-	if(receiveSupervision(fd) == COMPLETE)
+	if(receiveSupervision(fd,&C) == COMPLETE)
 	{
 		printf("received UA\n");
 		return 0;
@@ -292,53 +344,53 @@ int llcloseReceiver(int fd)
   return 1;
 }
 
-int stuffing(unsigned char * frame, int length){
+int stuffing(char * package, int length){
 
 		int size = length;
 		int i;
 		for(i = 0; i < length;i++){
-			char oct = frame[i];
+			char oct = package[i];
 			if(oct == F_FLAG || oct == ESC){
 					size++;
 			}
 		}
-		frame = realloc(frame, size);
+		package = realloc(package, size);
 
 		for(i = 0; i < size; i++){
-		 char oct = frame[i];
+		 char oct = package[i];
 		 if(oct == F_FLAG || oct == ESC){
 			 	 printf("moving");
-			 memmove(frame + i + 2, frame + i+1, size - i);
+			 memmove(package + i + 2, package + i+1, size - i);
 			 printf("moved");
 			 if (oct == F_FLAG) {
-			 		frame[i+1] = XOR_7E_20;
-					frame[i] = ESC ;
+			 		package[i+1] = XOR_7E_20;
+					package[i] = ESC ;
 			 }
-			 else frame[i+1] = XOR_7D_20;
+			 else package[i+1] = XOR_7D_20;
 		 }
 		}
 		return size;
 }
-int deStuffing(unsigned char * frame, int length){
+int deStuffing( char * package, int length){
 	int size = length;
 
 	int i;
 	for(i = 0; i < size; i++){
-		char oct = frame[i];
+		char oct = package[i];
 		if(oct == ESC)
 		{
-			if(frame[i+1] == XOR_7E_20){
-			 frame[i] = F_FLAG;
-			 memmove(frame + i + 1, frame + i + 2,length - i + 2);
+			if(package[i+1] == XOR_7E_20){
+			 package[i] = F_FLAG;
+			 memmove(package + i + 1, package + i + 2,length - i + 2);
 
 		 }
-			else if(frame[i+1] == XOR_7D_20){
-				memmove(frame + i + 1, frame + i + 2,length - i + 2);
+			else if(package[i+1] == XOR_7D_20){
+				memmove(package + i + 1, package + i + 2,length - i + 2);
 			}
 			 size--;
 		}
 	}
-	frame = realloc(frame,size);
+	package = realloc(package,size);
 	return size;
 }
 
@@ -350,10 +402,10 @@ char  makeBCC2(char* message, int length){
 	}
 	return bcc;
 }
-int receiveSupervision(int fd)
+int receiveSupervision(int fd,char * C)
 {
 	int status = 0;
-	char A, C;
+	char A;
 	do
 	{
 		switch(status)
@@ -365,10 +417,10 @@ int receiveSupervision(int fd)
 			status = receiveA(fd, &A);
 			break;
 			case A_RCV:
-			status = receiveC(fd, &C);
+			status = receiveC(fd, C);
 			break;
 			case C_RCV:
-			status = checkBCC(fd, A, C);
+			status = checkBCC(fd, A, *C);
 			break;
 			case BCC_RCV:
 			status = receiveFlag(fd);
@@ -486,28 +538,26 @@ int createAndSendPackage(int fd,int type)
 	return res;
 }
 
-int createSendStartEnd(int fd, char *filename, int length, unsigned int size, int type){
-	char * start = malloc(length+10);
-	start [0] = type;
-	start [1] = 0;
-	start [2] = 0x04;
-	start [3] = size % 0x100;
-	start [4] = start[3] % 0x100;
-	start [5] = (size  % 0x10000) % 0x100;
-	start [6] = size % 0x1000000;
-	start [7] = 1;
-	start [8] = length;
+int createStart(char *filename, int length, unsigned int size, int type,char *package){
+	package = realloc(package, length+10);
+	package [0] = type;
+	package [1] = 0;
+	package [2] = 0x04;
+	package [3] = size % 0x100;
+	package [4] = package[3] % 0x100;
+	package [5] = (size  % 0x10000) % 0x100;
+	package [6] = size % 0x1000000;
+	package [7] = 1;
+	package [8] = length;
 
 	int i;
 	for ( i = 0; i < length; i++){
-		start[9+i] = filename[i];
+		package[9+i] = filename[i];
 	}
+	package[9+length] = makeBCC2(package,length+9);
 
-	start[9 + length] = makeBCC2(start, length + 9);
-	int lgt = packagePayLoad(0, (length + 10), start);
-	sendMensage(fd, start, lgt);
-	free(start);
-	return 0; //TODO
+
+	return (length + 10);
 }
 
 int packagePayLoad(int C, int size, char * payload){
@@ -523,9 +573,20 @@ int packagePayLoad(int C, int size, char * payload){
 	}
 
 	buffer[3 + size] = F_FLAG;
+	printf("BUFFER\n");
+	for(i = 0; i < size +5 ; i++){
+			printf("t%d:%x\n",i,buffer[i]);
+	}
 
-	free(payload);
-	payload = buffer;
+	memcpy(payload, buffer, size+5);
+
+free(buffer);
+
+	printf("payload\n");
+	for(i = 0; i < size +5 ; i++){
+			printf("t%d:%x\n",i,payload[i]);
+	}
+
 	return (size + 5);
 }
 int sendMensage(int fd, char *message, int length)
@@ -536,4 +597,52 @@ int sendMensage(int fd, char *message, int length)
 	printf("sending...\n");
 	}
   return 0;
+}
+int CHECK_RR_REJCT(int C, char ch){
+	if((RR1 == ch && C == 1) || (RR0 == ch && C==0))
+		return COMPLETE;
+	else
+		return -1;
+}
+//destroy trama
+int extractPackage(char *package, char *trama,int length){
+{		// 5 is from F A C1 BBC1 |--| F
+		int packageSize = length-5;
+		if(length - 5 <= 0) printf("extractPackage: length error: <= 0 \n");
+		package = realloc(package,packageSize);
+		memmove(trama,trama + 4,packageSize);
+		memcpy(package,trama, packageSize);
+		int size = deStuffing(package,packageSize);
+	return size;
+}
+int getTrama(int fd, char* trama){
+	int size = 0;
+
+	int flags = 0;
+	char ch;
+	int res;
+	int check_flag = FALSE;
+	while(flags < 2){
+		if((res = read(fd,ch,1)) > 0){
+			if(ch == F_FLAG)
+			{
+				flag++;
+			}
+			size++;
+			trama = realloc(trama,size);
+			trama[size - 1 ] = ch;
+		}
+	}
+//VALIDATE
+
+if(trama[1] ^ trama[2] == trama[3]){
+	printf("BBC CHECK: TRUE\n" );
+}
+else
+{
+	printf("BBC CHECK: FALSE\n" );
+	return -1;
+}
+
+	return size;
 }
