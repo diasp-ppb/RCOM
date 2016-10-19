@@ -161,11 +161,11 @@ int main(int argc, char** argv)
   else
      mode = TRANSMITTER;
 
- /*
+
   llopen(mode, fd);
 
 	llclose(mode, fd);
-*/
+/* TEST - DO NOT UNCOMMENT
 	if(mode == TRANSMITTER){
 	char *test = malloc(2);
 	test[0] = 'a';
@@ -210,7 +210,7 @@ printf("deStuffing: SIZE: %d \n",l);
 	}
 
 	free(jesus);
-
+*/
   if ( tcsetattr(fd,TCSANOW,&oldtio) == -1) {
     perror("tcsetattr");
     exit(-1);
