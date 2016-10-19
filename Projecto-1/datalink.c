@@ -30,6 +30,11 @@
 #define UA_PACK 1
 #define DISC_PACK 2
 
+#define DATA_PACK 1
+#define START_PACK 2
+#define END_PACK 3
+
+
 volatile int STOP=FALSE;
 
 char * createSet();
@@ -48,8 +53,15 @@ void atende();
 
 int llopenTransmitter(int fd);
 int llopenReceiver(int fd);
+
 int llcloseTransmitter(int fd);
 int llcloseReceiver(int fd);
+
+int llwrite(int fd, char *buffer, int length);
+int llread(int fd,char *buffer);
+
+int stuffing(unsigned char * frame, int length);
+int deStuffing(unsigned char * frame, int length);
 
 void atende()                   // atende alarme
 {
@@ -135,11 +147,38 @@ int main(int argc, char** argv)
   else
      mode = TRANSMITTER;
 
-  //TODO: TRANSMITTER OU RECEIVER
+ /*
   llopen(mode, fd);
 
 	llclose(mode, fd);
+*/
+	unsigned char *jesus = malloc(5);
+	jesus [0] = 0xF4;
+	jesus [1] = 0x7E;
+	jesus [2] = 0x7D;
+	jesus [3] = 0x55;
+	jesus [4] = 0x7D;
+	 int l;
+	 printf("PRE Stuffing\n");
+  l= stuffing(jesus,5);
 
+	printf("Stuffing: SIZE: %d \n",l);
+
+	int t;
+	for(t= 0; t < l; t++){
+		printf("t: %x \n",jesus[t]);
+	}
+
+	l = deStuffing(jesus,l);
+
+
+printf("deStuffing: SIZE: %d \n",l);
+
+	for(t= 0; t < l; t++){
+		printf("t: %x \n",jesus[t]);
+	}
+
+	free(jesus);
 
   if ( tcsetattr(fd,TCSANOW,&oldtio) == -1) {
     perror("tcsetattr");
@@ -222,7 +261,77 @@ int llcloseReceiver(int fd)
   return 1;
 }
 
+int llwrite(int fd, char *buffer, int length){
 
+	return 0;
+}
+int llread(int fd,char *buffer){
+	return 0;
+}
+/*
+char * buildIpackage(char * message,int length){
+
+}
+*/
+
+int stuffing(unsigned char * frame, int length){
+
+		int size = length;
+		int i;
+		for(i = 0; i < length;i++){
+			char oct = frame[i];
+			if(oct == F_FLAG || oct == ESC){
+					size++;
+			}
+		}
+		frame = realloc(frame, size);
+
+		for(i = 0; i < size; i++){
+		 char oct = frame[i];
+		 if(oct == F_FLAG || oct == ESC){
+			 	 printf("moving");
+			 memmove(frame + i + 2, frame + i+1, size - i);
+			 printf("moved");
+			 if (oct == F_FLAG) {
+			 		frame[i+1] = XOR_7E_20;
+					frame[i] = ESC ;
+			 }
+			 else frame[i+1] = XOR_7D_20;
+		 }
+		}
+		return size;
+}
+int deStuffing(unsigned char * frame, int length){
+	int size = length;
+
+	int i;
+	for(i = 0; i < size; i++){
+		char oct = frame[i];
+		if(oct == ESC)
+		{
+			if(frame[i+1] == XOR_7E_20){
+			 frame[i] = F_FLAG;
+			 memmove(frame + i + 1, frame + i + 2,length - i + 2);
+
+		 }
+			else if(frame[i+1] == XOR_7D_20){
+				memmove(frame + i + 1, frame + i + 2,length - i + 2);
+			}
+			 size--;
+		}
+	}
+	frame = realloc(frame,size);
+	return size;
+}
+
+char  makeBCC2(char* message, int length){
+	char bcc = 0;
+	int i;
+	for(i = 0; i < length; i++){
+		bcc ^= message[i];
+	}
+	return bcc;
+}
 int receiveSupervision(int fd)
 {
 	int status = 0;
@@ -358,8 +467,10 @@ int createAndSendPackage(int fd,int type)
 	free(msg);
 	return res;
 }
-
-
+/*
+int createSendStartEnd(char *filename,int length, unsigned int size,int type){
+		int quoc =
+}*/
 
 int sendMensage(int fd, char *message, int length)
 {
