@@ -140,7 +140,7 @@ return 0;//TODO retornar o sucesso da recepçao
 
 int llread(int fd,char *buffer){
 	//TODO
-	char *trama  = malloc(trama,1);
+	char *trama  = malloc(1);
  	int size  = getTrama(fd, trama);
 
 	if(size < 5)
@@ -148,7 +148,7 @@ int llread(int fd,char *buffer){
 		printf("Wrong packageSize: size: %d\n",size);
 	}
 
-	char *package = malloc(package,1);
+	char *package = malloc(1);
 	size = extractPackage(package,trama,size);
 
 	size = deStuffing(package, size);
@@ -228,7 +228,7 @@ int main(int argc, char** argv)
 	llread(fd, test);
 	int t;
 	for(t= 0; t < 20; t++){
-		printf("t: %x \n",test[t]);
+		printf("t: %x \n",(unsigned char)test[t]);
 	}
 	free(test);
 	}
@@ -262,8 +262,7 @@ printf("deStuffing: SIZE: %d \n",l);
 
 	free(jesus);
 */
-  if ( tcsetattr(fd,T
-		CSANOW,&oldtio) == -1) {
+  if ( tcsetattr(fd,TCSANOW,&oldtio) == -1) {
     perror("tcsetattr");
     exit(-1);
   }
@@ -463,7 +462,6 @@ int receiveA(int fd, char* ch)
 
 int receiveC(int fd, char* ch)
 {
-
 	int res;
 	res = read(fd, ch, 1);
 	//printf("receiveC %x \n",*ch);
@@ -606,7 +604,7 @@ int CHECK_RR_REJCT(int C, char ch){
 }
 //destroy trama
 int extractPackage(char *package, char *trama,int length){
-{		// 5 is from F A C1 BBC1 |--| F
+		// 5 is from F A C1 BBC1 |--| F
 		int packageSize = length-5;
 		if(length - 5 <= 0) printf("extractPackage: length error: <= 0 \n");
 		package = realloc(package,packageSize);
@@ -621,9 +619,9 @@ int getTrama(int fd, char* trama){
 	int flags = 0;
 	char ch;
 	int res;
-	int check_flag = FALSE;
-	while(flags < 2){
-		if((res = read(fd,ch,1)) > 0){
+	/*while(flags < 2){
+		 res = read(fd,&ch,1);
+		if( res > 0){
 			if(ch == F_FLAG)
 			{
 				flag++;
@@ -633,16 +631,15 @@ int getTrama(int fd, char* trama){
 			trama[size - 1 ] = ch;
 		}
 	}
-//VALIDATE
-
-if(trama[1] ^ trama[2] == trama[3]){
-	printf("BBC CHECK: TRUE\n" );
-}
-else
-{
-	printf("BBC CHECK: FALSE\n" );
-	return -1;
-}
-
-	return size;
+		//VALIDATE
+	
+	if(trama[1] ^ trama[2] == trama[3]){
+		printf("BBC CHECK: TRUE\n" );
+		return size;
+	}
+	else{
+		printf("BBC CHECK: FALSE\n" );
+		return -1;
+	}*/
+	
 }
