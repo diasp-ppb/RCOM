@@ -8,6 +8,7 @@
 #include <unistd.h>
 #include "util.h"
 #include <signal.h>
+#include <errno.h>
 
 
 #define BAUDRATE B38400
@@ -120,6 +121,7 @@ size = packagePayLoad(C, size, copy);
 int noResponse = 1;
 char ch;
 	installAlarm();
+	conta = 0;
 
 	while(conta < 4  && noResponse != COMPLETE){
 		if(flag){
@@ -147,18 +149,21 @@ int llread(int fd,char *buffer){
 	{
 		printf("Wrong packageSize: size: %d\n",size);
 	}
-
+	printf("package Valid size\n");
+	
 	char *package = malloc(1);
 	size = extractPackage(package,trama,size);
-
+	printf("package extracted\n");
 	size = deStuffing(package, size);
-
+	
 	buffer = realloc(buffer,size);
 	
 	memcpy(buffer, package,size);
 	free(trama);
 	free(package);
 	printf("FIM READ\n");
+
+	
 	return 0;
 }
 
@@ -211,10 +216,10 @@ int main(int argc, char** argv)
   else
      mode = TRANSMITTER;
 
-/*
- 	llopen(mode, fd);
-	llclose(mode, fd);
-*/
+
+ /*	llopen(mode, fd);
+	llclose(mode, fd);*/
+
 //TEST - DO NOT UNCOMMENT
 	if(mode == TRANSMITTER){
 	char *test = malloc(2);
@@ -619,27 +624,30 @@ int getTrama(int fd, char* trama){
 	int flags = 0;
 	char ch;
 	int res;
-	/*while(flags < 2){
+	printf("getting trama\n");
+	while(flags < 2){
 		 res = read(fd,&ch,1);
-		if( res > 0){
+		/*if( res > 0){
+			printf("package cell -- ");
 			if(ch == F_FLAG)
 			{
-				flag++;
+				flags++;
 			}
 			size++;
 			trama = realloc(trama,size);
 			trama[size - 1 ] = ch;
-		}
+		}*/
+
 	}
-		//VALIDATE
-	
-	if(trama[1] ^ trama[2] == trama[3]){
+	/*	//VALIDATE
+	printf("\ntrama received\n");
+	if((trama[1] ^ trama[2]) == trama[3]){
 		printf("BBC CHECK: TRUE\n" );
 		return size;
 	}
-	else{
+	else{*/
 		printf("BBC CHECK: FALSE\n" );
-		return -1;
-	}*/
+		return size; //TODO
+	//}
 	
 }
