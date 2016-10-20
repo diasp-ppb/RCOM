@@ -118,6 +118,12 @@ memcpy(copy,buffer,length);
 int size = stuffing(copy, length);
 size = packagePayLoad(C, size, copy);
 
+int i;
+printf("llwrite trama I :");
+for(i = 0; i < size ; i ++){
+    printf("%x\n",copy[i]);
+}
+
 int noResponse = 1;
 char ch;
 	installAlarm();
@@ -236,17 +242,15 @@ int main(int argc, char** argv)
 		printf("t: %x \n",(unsigned char)test[t]);
 	}
 	free(test);
-	}
+            
+        }
 /*
-	 char *jesus = malloc(5);
+	 char *jesus = malloc(2);
 	jesus [0] = 0xF4;
 	jesus [1] = 0x7E;
-	jesus [2] = 0x7D;
-	jesus [3] = 0x55;
-	jesus [4] = 0x7D;
 	 int l;
 	 printf("PRE Stuffing\n");
-  l= stuffing(jesus,5);
+        l= stuffing(jesus,2);
 
 	printf("Stuffing: SIZE: %d \n",l);
 
@@ -564,7 +568,7 @@ int createStart(char *filename, int length, unsigned int size, int type,char *pa
 }
 
 int packagePayLoad(int C, int size, char * payload){
-	char * buffer = malloc(size + 5);
+	char * buffer = malloc(size + 4);
 	buffer[0] = F_FLAG;
 	buffer[1] = A_EM;
 	buffer[2] = C;
@@ -576,21 +580,17 @@ int packagePayLoad(int C, int size, char * payload){
 	}
 
 	buffer[3 + size] = F_FLAG;
-	printf("BUFFER\n");
-	for(i = 0; i < size +5 ; i++){
-			printf("t%d:%x\n",i,buffer[i]);
-	}
-
 	memcpy(payload, buffer, size+5);
 
-free(buffer);
-
-	printf("payload\n");
-	for(i = 0; i < size +5 ; i++){
+free(buffer);   
+        
+  
+	printf("TRAMA I size:%d\n",size+4);
+	for(i = 0; i < size +4 ; i++){
 			printf("t%d:%x\n",i,payload[i]);
 	}
 
-	return (size + 5);
+	return (size + 4);
 }
 int sendMensage(int fd, char *message, int length)
 {
