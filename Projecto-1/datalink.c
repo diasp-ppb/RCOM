@@ -116,10 +116,11 @@ int llwrite(int fd, char *buffer, int length,int C){
 char * copy = malloc(length);
 memcpy(copy,buffer,length);
 int size = stuffing(copy, length);
+printf("llwrite package stuffed : size:%d \n",size);
 size = packagePayLoad(C, size, copy);
 
 int i;
-printf("llwrite trama I :");
+printf("llwrite trama I : size:%d \n",size);
 for(i = 0; i < size ; i ++){
     printf("%x\n",copy[i]);
 }
@@ -156,20 +157,20 @@ int llread(int fd,char *buffer){
 		printf("Wrong packageSize: size: %d\n",size);
 	}
 	printf("package Valid size\n");
-	
+
 	char *package = malloc(1);
 	size = extractPackage(package,trama,size);
 	printf("package extracted\n");
 	size = deStuffing(package, size);
-	
+
 	buffer = realloc(buffer,size);
-	
+
 	memcpy(buffer, package,size);
 	free(trama);
 	free(package);
 	printf("FIM READ\n");
 
-	
+
 	return 0;
 }
 
@@ -242,7 +243,7 @@ int main(int argc, char** argv)
 		printf("t: %x \n",(unsigned char)test[t]);
 	}
 	free(test);
-            
+
         }
 /*
 	 char *jesus = malloc(2);
@@ -568,7 +569,8 @@ int createStart(char *filename, int length, unsigned int size, int type,char *pa
 }
 
 int packagePayLoad(int C, int size, char * payload){
-	char * buffer = malloc(size + 4);
+	int tramaSize = size + 5;
+	char * buffer = malloc(tramaSize);
 	buffer[0] = F_FLAG;
 	buffer[1] = A_EM;
 	buffer[2] = C;
@@ -579,18 +581,18 @@ int packagePayLoad(int C, int size, char * payload){
 		buffer[i + 4] = payload[i];
 	}
 
-	buffer[3 + size] = F_FLAG;
-	memcpy(payload, buffer, size+5);
+	buffer[tramaSize-1] = F_FLAG;
+	memcpy(payload, buffer, tramaSize);
 
-free(buffer);   
-        
-  
-	printf("TRAMA I size:%d\n",size+4);
+free(buffer);
+
+
+	printf("TRAMA I size:%d\n",tramaSize);
 	for(i = 0; i < size +4 ; i++){
 			printf("t%d:%x\n",i,payload[i]);
 	}
 
-	return (size + 4);
+	return tramaSize;
 }
 int sendMensage(int fd, char *message, int length)
 {
@@ -627,7 +629,7 @@ int getTrama(int fd, char* trama){
 	printf("getting trama\n");
 	while(flags < 2){
 		 res = read(fd,&ch,1);
-		/*if( res > 0){
+		if( res > 0){
 			printf("package cell -- ");
 			if(ch == F_FLAG)
 			{
@@ -636,18 +638,18 @@ int getTrama(int fd, char* trama){
 			size++;
 			trama = realloc(trama,size);
 			trama[size - 1 ] = ch;
-		}*/
+		}
 
 	}
-	/*	//VALIDATE
+		//VALIDATE
 	printf("\ntrama received\n");
 	if((trama[1] ^ trama[2]) == trama[3]){
 		printf("BBC CHECK: TRUE\n" );
 		return size;
 	}
-	else{*/
+	else{
 		printf("BBC CHECK: FALSE\n" );
 		return size; //TODO
-	//}
-	
+	}
+
 }
