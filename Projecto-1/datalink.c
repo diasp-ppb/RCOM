@@ -74,7 +74,7 @@ int deStuffing(char * package, int length);
 int packagePayLoad(int C, int size, char * payload);
 int createStart(char *filename, int length, unsigned int size, int type,char *package);
 
-int getTrama(int fd, char* trama);
+int getTrama (int fd, char* trama);
 int extractPackage(char *package, char *trama,int length);
 
 void atende()                   // atende alarme
@@ -155,13 +155,27 @@ int llread(int fd,char *buffer){
 	{
 		printf("Wrong packageSize: size: %d\n",size);
 	}
-	printf("package Valid size\n");
+	printf("package Valid size, %d\n",size);
 	
 	char *package = malloc(1);
 	size = extractPackage(package,trama,size);
-	printf("package extracted\n");
+	printf("package extracted:size %d \n",size);
+	printf("package stufed: \n");
+	int i;
+	
+	for(i = 0; i < size;i++){
+		printf("pS: %x",(unsigned char) package[i]);
+	}
+
+
 	size = deStuffing(package, size);
 	
+
+	printf("package DEstufed: size: %d \n",size);
+	for(i = 0; i < size;i++){
+		printf("p: %x \n",(unsigned char) package[i]);
+	}
+
 	buffer = realloc(buffer,size);
 	
 	memcpy(buffer, package,size);
@@ -236,9 +250,9 @@ int main(int argc, char** argv)
 	}
 	else if(mode == RECEIVER){
 	char* test = malloc(20);
-	llread(fd, test);
+	int size = llread(fd, test);
 	int t;
-	for(t= 0; t < 20; t++){
+	for(t= 0; t < size; t++){
 		printf("t: %x \n",(unsigned char)test[t]);
 	}
 	free(test);
@@ -627,7 +641,7 @@ int getTrama(int fd, char* trama){
 	printf("getting trama\n");
 	while(flags < 2){
 		 res = read(fd,&ch,1);
-		/*if( res > 0){
+		if( res > 0){
 			printf("package cell -- ");
 			if(ch == F_FLAG)
 			{
@@ -636,18 +650,18 @@ int getTrama(int fd, char* trama){
 			size++;
 			trama = realloc(trama,size);
 			trama[size - 1 ] = ch;
-		}*/
+		}
 
 	}
-	/*	//VALIDATE
+		//VALIDATE
 	printf("\ntrama received\n");
 	if((trama[1] ^ trama[2]) == trama[3]){
 		printf("BBC CHECK: TRUE\n" );
 		return size;
 	}
-	else{*/
+	else{
 		printf("BBC CHECK: FALSE\n" );
 		return size; //TODO
-	//}
+	}
 	
 }
