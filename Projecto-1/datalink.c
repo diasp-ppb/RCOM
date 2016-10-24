@@ -127,7 +127,6 @@ for(i = 0; i < size ; i ++){
 
 int noResponse = 1;
 char ch;
-	installAlarm();
 	conta = 0;
 
 	while(conta < 4  && noResponse != COMPLETE){
@@ -238,12 +237,14 @@ int main(int argc, char** argv)
   else
      mode = TRANSMITTER;
 
+	if(mode == TRANSMITTER)
+		installAlarm();
 
- /*	llopen(mode, fd);
-	llclose(mode, fd);*/
+ 	llopen(mode, fd);
+	llclose(mode, fd);
 
 //TEST - DO NOT UNCOMMENT
-	if(mode == TRANSMITTER){
+/*	if(mode == TRANSMITTER){
 	char *test = malloc(2);
 	test[0] = 'a';
 	test[1] = 'b';
@@ -259,7 +260,7 @@ int main(int argc, char** argv)
 	}
 	free(test);
 
-        }
+        }*/
 /*
 	 char *jesus = malloc(2);
 	jesus [0] = 0xF4;
@@ -299,20 +300,20 @@ printf("deStuffing: SIZE: %d \n",l);
 int llopenTransmitter(int fd)
 {
   int noResponse = 1;
-
-	installAlarm();
+  conta = 0;
 
  	while(conta < 4 && noResponse != COMPLETE)
-  {
+  	{
 	   if(flag)
-     {
-       alarm(3);
-       flag=0;
-        createAndSendPackage(fd,SET_PACK);
-     }
-		 char C;
-     noResponse = receiveSupervision(fd,&C);
+     	   {
+        	alarm(3);
+       		flag=0;
+        	createAndSendPackage(fd,SET_PACK);
+           }
+	 char C;
+     	 noResponse = receiveSupervision(fd,&C);
 	}
+  printf("Connection opened with success\n");
   return 0;
 }
 
@@ -322,7 +323,7 @@ int llopenReceiver(int fd)
 	char C;
   if(receiveSupervision(fd,&C) == COMPLETE)
     createAndSendPackage(fd,UA_PACK);
-
+  printf("connection opened successfuly\n");
   return 0;
 }
 
@@ -330,27 +331,28 @@ int llcloseTransmitter(int fd)
 {
 	int noResponse = 1;
 	char C;
-	installAlarm();
+	conta = 0;
 
  	while(conta < 4 && noResponse != COMPLETE)
-  {
-	   if(flag)
-     {
-       alarm(3);
-       flag=0;
-        createAndSendPackage(fd,DISC_PACK);
-     }
-     noResponse = receiveSupervision(fd,&C);
-		 if(noResponse == COMPLETE)
-		 printf("received DISC \n");
+        {
+	   if(createAndSendPackage(fd, DISC_PACK) == 5)
+	   {
+		alarm(3);
+		flag = 0;
+	   
+	   	while(flag == 0 && noResponse != COMPLETE)
+	       		noResponse = receiveSupervision(fd, &C);
+	       
+	   }
 	}
-
-int i;
-for(i= 0; i < 3; i++){
+	
+	if(conta < 4){
 	createAndSendPackage(fd,UA_PACK);//TODO NEED FIX SHOULD ONLY SEND ONCE
-}
-	printf("sent UA \n");
-  return 0;
+	printf("connection closed sucessfully\n");
+	return 0;
+	}
+	printf("no success closing connection\n");
+	return 1;
 }
 
 int llcloseReceiver(int fd)
@@ -362,7 +364,7 @@ int llcloseReceiver(int fd)
 
 	if(receiveSupervision(fd,&C) == COMPLETE)
 	{
-		printf("received UA\n");
+		printf("connection closed successfully\n");
 		return 0;
 	}
   return 1;
@@ -449,14 +451,14 @@ int receiveSupervision(int fd,char * C)
 			case BCC_RCV:
 			status = receiveFlag(fd);
 			if(status == FLAG_RCV)
-				{status = COMPLETE;
-				printf("full package!\n");}
+				status = COMPLETE;
+				//printf("full package!\n");}
 			break;
 		}
 
 	}while(status != COMPLETE && flag == 0);
 	//printf("Flag %d \n",flag);
-	printf("status %d \n",status);
+	//printf("status %d \n",status);
 	return status;
 }
 
@@ -540,7 +542,7 @@ char* createDisc()
 	UA[0] = F_FLAG;
 	UA[1] = A_EM;
 	UA[2] = C_DISC;
-	UA[3] = A_EM ^ C_UA;
+	UA[3] = A_EM ^ C_DISC;
 	UA[4] = F_FLAG;
 
 	return UA;
@@ -614,9 +616,9 @@ int sendMensage(int fd, char *message, int length)
 	int res  = 0;
 	while(res <= 0){
 	res=write(fd, message, length);
-	printf("sending...\n");
+	//printf("sending... %d\n", res);
 	}
-  return 0;
+  return res;
 }
 int CHECK_RR_REJCT(int C, char ch){
 	if((RR1 == ch && C == 1) || (RR0 == ch && C==0))
