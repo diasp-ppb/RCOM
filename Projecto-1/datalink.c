@@ -30,6 +30,10 @@
 #define SET_PACK 0
 #define UA_PACK 1
 #define DISC_PACK 2
+#define RR_0PACK 3
+#define RR_1PACK 4
+#define REJ_0PACK 5
+#define REJ_1PACK 6
 
 #define DATA_PACK 1
 #define START_PACK 2
@@ -157,13 +161,13 @@ int llread(int fd,char *buffer){
 	}
 
 	printf("package Valid size, %d\n",size);
-	
+
 	char *package = malloc(1);
 	size = extractPackage(package,trama,size);
 	printf("package extracted:size %d \n",size);
 	printf("package stufed: \n");
 	int i;
-	
+
 	for(i = 0; i < size;i++){
 		printf("pS: %x",(unsigned char) package[i]);
 	}
@@ -339,13 +343,13 @@ int llcloseTransmitter(int fd)
 	   {
 		alarm(3);
 		flag = 0;
-	   
+
 	   	while(flag == 0 && noResponse != COMPLETE)
 	       		noResponse = receiveSupervision(fd, &C);
-	       
+
 	   }
 	}
-	
+
 	if(conta < 4){
 	createAndSendPackage(fd,UA_PACK);//TODO NEED FIX SHOULD ONLY SEND ONCE
 	printf("connection closed sucessfully\n");
@@ -538,27 +542,75 @@ char* createUA()
 
 char* createDisc()
 {
-	char* UA = malloc(5*sizeof(char));
-	UA[0] = F_FLAG;
-	UA[1] = A_EM;
-	UA[2] = C_DISC;
-	UA[3] = A_EM ^ C_DISC;
-	UA[4] = F_FLAG;
+	char* DISC = malloc(5*sizeof(char));
+	DISC[0] = F_FLAG;
+	DISC[1] = A_EM;
+	DISC[2] = C_DISC;
+	DISC[3] = A_EM ^ C_DISC;
+	DISC[4] = F_FLAG;
 
-	return UA;
+	return DISC;
 }
+
+char* createRR(int package)
+{
+	char* RR = malloc(5*sizeof(char));
+	RR[0] = F_FLAG;
+	RR[1] = A_EM;
+	if(package == 0)
+		RR[2] = C_RR0;
+	else if(package == 1)
+		RR[2] = C_RR1;
+	RR[3] = RR[1] ^ RR[2];
+	RR[4] = F_FLAG;
+	return RR;
+}
+
+char* createREJ(int package)
+{
+	char* REJ = malloc(5*sizeof(char));
+	REJ[0] = F_FLAG;
+	REJ[1] = A_EM;
+	if(package == 0)
+		REJ[2] = C_REJ0;
+	else if(package == 1)
+		REJ[2] = C_REJ1;
+	REJ[3] = REJ[1] ^ REJ[2];
+	REJ[4] = F_FLAG;
+	return REJ;
+}
+
 
 int createAndSendPackage(int fd,int type)
 {
 	char * msg;
-	if(SET_PACK == type)
+
+	switch(type){
+		case SET_PACK:
 		msg = createSet();
-	else if (UA_PACK == type)
+		break;
+		case UA_PACK:
 		msg = createUA();
-	else if(DISC_PACK == type)
+		break;
+		case DISC_PACK:
 		msg = createDisc();
+		break;
+		case RR_0PACK:
+		msg = createRR(0);
+		break;
+		case RR_1PACK:
+		msg = createRR(1);
+		break;
+		case REJ_0PACK:
+		msg = createREJ(0);
+		break;
+		case REJ_1PACK:
+		msg = createREJ(1);
+		break;
+	}
+
  	int res = sendMensage(fd,msg,5);
-	sleep(1);
+
 	free(msg);
 	return res;
 }
