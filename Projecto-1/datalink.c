@@ -39,11 +39,7 @@
 #define START_PACK 2
 #define END_PACK 3
 
-#define RR0 0x03
-#define RR1 0x83
-
-#define REJ0 0x01
-#define REJ1 0x81
+#define TRAMA_SIZE 64
 
 
 
@@ -69,7 +65,7 @@ int llcloseTransmitter(int fd);
 int llcloseReceiver(int fd);
 
 int llwrite(int fd, char *buffer, int length,int C);
-int llread(int fd, char *buffer);
+int llread(int fd, char *buffer, int C);
 int llstart(int fd, char* filename, int length, unsigned int size, int type);
 
 int stuffing(char * package, int length);
@@ -115,7 +111,7 @@ int llclose(int flag, int fd)
 }
 
 
-int llwrite(int fd, char *buffer, int length,int C){
+int llwrite(int fd, char *buffer, int length, int C){
 
 char * copy = malloc(length);
 memcpy(copy,buffer,length);
@@ -150,18 +146,20 @@ free(copy);
 return 0;//TODO retornar o sucesso da recepçao
 }
 
-int llread(int fd,char *buffer){
+int llread(int fd,char *buffer, int C){
 	//TODO
 	char *trama  = malloc(1);
  	int size  = getTrama(fd, trama);
 
 	if(size < 5)
 	{
-		printf("Wrong packageSize: size: %d\n",size);
-		/*if(pack_ID)
+		printf("Wrong trama: size: %d\n",size);
+		if(C == 1)
 			createAndSendPackage(fd, REJ_1PACK);
-		else
-				createAndSendPackage(fd,REJ_0PACK);*/
+		else if(C == 0)
+			createAndSendPackage(fd, REJ_0PACK);
+
+		return -1;
 	}
 
 	printf("package Valid size, %d\n",size);
@@ -639,21 +637,27 @@ int createStart(char *filename, int length, unsigned int size, int type,char *pa
 	package [0] = type;
 	package [1] = 0;
 	package [2] = 0x04;
-	package [3] = size % 0x100;
-	package [4] = package[3] % 0x100;
-	package [5] = (size  % 0x10000) % 0x100;
-	package [6] = size % 0x1000000;
-	package [7] = 1;
-	package [8] = length;
 
-	int i;
-	for ( i = 0; i < length; i++){
-		package[9+i] = filename[i];
+	int i = 0;
+	while(size != 0){
+		package[3 + i] = size % 255;
+		size = size % 255;
+		i++;
 	}
-	package[9+length] = makeBCC2(package,length+9);
+
+	package [3+i] = 1;
+	package [4+i] = length;
+
+	int j;
+	int l = 5+i;
+	for ( j = 0; j < length; j++){
+		int l = l+j;
+		package[l] = filename[j];
+	}
+	package[l+length] = makeBCC2(package,length + l);
 
 
-	return (length + 10);
+	return (length + l + 1);
 }
 
 int packagePayLoad(int C, int size, char * payload){
@@ -672,8 +676,7 @@ int packagePayLoad(int C, int size, char * payload){
 	buffer[tramaSize-1] = F_FLAG;
 	memcpy(payload, buffer, tramaSize);
 
-free(buffer);
-
+	free(buffer);
 
 	printf("TRAMA I size:%d\n",tramaSize);
 	for(i = 0; i < size +4 ; i++){
@@ -691,27 +694,35 @@ int sendMensage(int fd, char *message, int length)
 	}
   return res;
 }
+
 int CHECK_RR_REJCT(int C, char ch){
-	if((RR1 == ch && C == 1) || (RR0 == ch && C==0))
+	if((C_RR1 == ch && C == 1) || (C_RR0 == ch && C==0))
 		return COMPLETE;
 	else
 		return -1;
 }
+
 //destroy trama
 int extractPackage(char *package, char *trama,int length){
 		// 5 is from F A C1 BBC1 |--| F
 		int packageSize = length-5;
-		if(length - 5 <= 0) printf("extractPackage: length error: <= 0 \n");
+		if(length - 5 <= 0)
+			printf("extractPackage: length error: <= 0 \n");
 		package = realloc(package,packageSize);
 		memmove(trama,trama + 4,packageSize);
 		memcpy(package,trama, packageSize);
 		int size = deStuffing(package,packageSize);
-	return size;
+		return size;
 }
+
 int getTrama(int fd, char* trama){
 	int size = 0;
 
 	int flags = 0;
+	int multi = 1;
+
+	trama = realloc(trama, multi * TRAMA_SIZE);
+
 	char ch;
 	int res;
 	printf("getting trama\n");
@@ -720,24 +731,30 @@ int getTrama(int fd, char* trama){
 		if( res > 0){
 			printf("package cell -- ");
 			if(ch == F_FLAG)
-			{
 				flags++;
-			}
+
 			size++;
-			trama = realloc(trama,size);
+			if(size > multi*TRAMA_SIZE)
+			{
+					multi *= 2;
+					trama = realloc(trama, multi * TRAMA_SIZE);
+			}
 			trama[size - 1 ] = ch;
 		}
 
 	}
+
+	trama = realloc(trama, size);
+
 		//VALIDATE
 	printf("\ntrama received\n");
 	if((trama[1] ^ trama[2]) == trama[3]){
-		printf("BBC CHECK: TRUE\n" );
+		printf("BCC1 CHECK: TRUE\n" );
 		return size;
 	}
 	else{
-		printf("BBC CHECK: FALSE\n" );
-		return size; //TODO
+		printf("BCC1 CHECK: FALSE\n" );
+		return -1;
 	}
 
 }
