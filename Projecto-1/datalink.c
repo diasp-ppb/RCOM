@@ -158,10 +158,10 @@ int llread(int fd,char *buffer){
 	if(size < 5)
 	{
 		printf("Wrong packageSize: size: %d\n",size);
-		if( /*global*/)
+		/*if(pack_ID)
 			createAndSendPackage(fd, REJ_1PACK);
 		else
-				createAndSendPackage(fd,REJ_0PACK);
+				createAndSendPackage(fd,REJ_0PACK);*/
 	}
 
 	printf("package Valid size, %d\n",size);
@@ -184,20 +184,21 @@ int llread(int fd,char *buffer){
 		printf("p: %x \n",(unsigned char) package[i]);
 	}
 
-	bcc = makeBCC2( package, size-1);
-
+	//bcc = makeBCC2( package, size-1);
+/*
 	if(bcc == package[size-1]){//envia rr
-		if( /*global*/)
-			createAndSendPackage(fd, RR_0PACK);
+		if(pack_ID)
+				createAndSendPackage(fd, RR_0PACK);
 		else
 				createAndSendPackage(fd,RR_1PACK);
 	}
 	else{// envia rej
-		if( /*global*/)
-			createAndSendPackage(fd, REJ_1PACK);
+		if(pack_ID)
+				createAndSendPackage(fd, REJ_1PACK);
 		else
 				createAndSendPackage(fd,REJ_0PACK);
 	}
+	*/
 
 	buffer = realloc(buffer,size);
 
