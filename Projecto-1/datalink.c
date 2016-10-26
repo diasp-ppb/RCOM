@@ -248,10 +248,11 @@ int main(int argc, char** argv)
 	mode = TRANSMITTER;
 
 	if(mode == TRANSMITTER)
-	installAlarm();
+		installAlarm();
 
-	llopen(mode, fd);
-	llclose(mode, fd);
+/*	llopen(mode, fd);
+	llclose(mode, fd);*/
+
 
 	//TEST - DO NOT UNCOMMENT
 	/*	if(mode == TRANSMITTER){
@@ -300,22 +301,27 @@ free(jesus);
 */
 
 // TEST SEND AND RECEIVE
-/*
-//char str[2] = "oi";
-//llwrite(0, str, 2, 0);
 
-char *readBuffer = malloc(1);
-llread(0, readBuffer, 0);
-free(readBuffer);
-*/
+char str[2] = "oi";
 
-if ( tcsetattr(fd,TCSANOW,&oldtio) == -1) {
-	perror("tcsetattr");
-	exit(-1);
+if(mode == TRANSMITTER){
+	llwrite(fd, str, 2, 0);
+}
+else if(mode == RECEIVER){
+	char *readBuffer = malloc(1);
+	llread(0, readBuffer, 0);
+	free(readBuffer);
 }
 
-close(fd);
-return 0;
+	sleep(2);
+
+	if ( tcsetattr(fd,TCSANOW,&oldtio) == -1) {
+		perror("tcsetattr");
+		exit(-1);
+	}
+
+	close(fd);
+	return 0;
 }
 
 int llopenTransmitter(int fd)
