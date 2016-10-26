@@ -9,7 +9,7 @@
 #include "util.h"
 #include <signal.h>
 #include <errno.h>
-
+#include "datalink.h"
 
 #define BAUDRATE B38400
 #define MODEMDEVICE "/dev/ttyS1"
@@ -42,40 +42,8 @@
 #define TRAMA_SIZE 64
 
 
-
-char * createSet();
-int sendMensage(int fd, char *message, int length);
-int createAndSendPackage(int fd, int type);
-int receiveFlag(int fd);
-int receiveA(int fd, char *ch);
-int receiveC(int fd, char *ch);
-int checkBCC(int fd, char A, char C);
-int receiveSupervision(int fd, char * C);
-int CHECK_RR_REJCT(int C, char ch);
-
 volatile int flag=1, conta=1;
 
-void installAlarm();
-void atende();
-
-int llopenTransmitter(int fd);
-int llopenReceiver(int fd);
-
-int llcloseTransmitter(int fd);
-int llcloseReceiver(int fd);
-
-int llwrite(int fd, char *buffer, int length,int C);
-int llread(int fd, char *buffer, int C);
-int llstart(int fd, char* filename, int length, unsigned int size, int type);
-
-int stuffing(char * package, int length);
-int deStuffing(char * package, int length);
-
-int packagePayLoad(int C, int size, char * payload);
-int createStart(char *filename, int length, unsigned int size, int type,char *package);
-
-int getTrama (int fd, char* trama);
-int extractPackage(char *package, char *trama,int length);
 
 void atende()                   // atende alarme
 {
@@ -85,48 +53,54 @@ void atende()                   // atende alarme
 }
 
 void installAlarm(){
-  (void) signal(SIGALRM, atende);  // instala  rotina que atende interrupcao
- printf("Alarme Instalado\n");
+	(void) signal(SIGALRM, atende);  // instala  rotina que atende interrupcao
+	printf("Alarme Instalado\n");
 }
 
 
 //TODO: ver argumento porta pwp18
 int llopen(int flag, int fd)
 {
-  if(flag == TRANSMITTER)
-    llopenTransmitter(fd);
-  else if(flag == RECEIVER)
-    llopenReceiver(fd);
-  return 1;
+	if(flag == TRANSMITTER)
+	llopenTransmitter(fd);
+	else if(flag == RECEIVER)
+	llopenReceiver(fd);
+	return 1;
 }
 
 int llclose(int flag, int fd)
 {
 	if(flag == TRANSMITTER)
-		llcloseTransmitter(fd);
+	llcloseTransmitter(fd);
 	else if(flag == RECEIVER)
-		llcloseReceiver(fd);
-		sleep(5);
-		return 1;
+	llcloseReceiver(fd);
+	sleep(5);
+	return 1;
 }
 
 
 int llwrite(int fd, char *buffer, int length, int C){
 
-char * copy = malloc(length);
-memcpy(copy,buffer,length);
-int size = stuffing(copy, length);
-printf("llwrite package stuffed : size:%d \n",size);
-size = packagePayLoad(C, size, copy);
+	char * copy = malloc(length + 1);
+	memcpy(copy,buffer,length);
 
-int i;
-printf("llwrite trama I : size:%d \n",size);
-for(i = 0; i < size ; i ++){
-    printf("%x\n",copy[i]);
-}
+	char bcc2 = makeBCC2(buffer, length);
+	copy[length] = bcc2;
 
-int noResponse = 1;
-char ch;
+	//TODO empacotar correctamente
+	int size = stuffing(copy, length + 1);
+	printf("llwrite package stuffed : size:%d \n",size);
+
+	size = packagePayLoad(C, size, copy);
+
+	int i;
+	printf("llwrite trama I : size:%d \n",size);
+	for(i = 0; i < size ; i ++){
+		printf("%d - %x\n",i, copy[i]);
+	}
+
+	/*int noResponse = 1;
+	char ch;
 	conta = 0;
 
 	while(conta < 4  && noResponse != COMPLETE){
@@ -136,28 +110,28 @@ char ch;
 			sendMensage(fd,copy,size);
 		}
 
-	int	r = receiveSupervision(fd,&ch);
+		int	r = receiveSupervision(fd,&ch);
 		if(r == COMPLETE){
 			noResponse = CHECK_RR_REJCT(C,ch);
 		}
 	}
-
-free(copy);
-return 0;//TODO retornar o sucesso da recepçao
+*/
+	free(copy);
+	return 0;//TODO retornar o sucesso da recepçao
 }
 
 int llread(int fd,char *buffer, int C){
 	//TODO
 	char *trama  = malloc(1);
- 	int size  = getTrama(fd, trama);
+	int size  = getTrama(fd, trama);
 
 	if(size < 5)
 	{
 		printf("Wrong trama: size: %d\n",size);
 		if(C == 1)
-			createAndSendPackage(fd, REJ_1PACK);
+		createAndSendPackage(fd, REJ_1PACK);
 		else if(C == 0)
-			createAndSendPackage(fd, REJ_0PACK);
+		createAndSendPackage(fd, REJ_0PACK);
 
 		return -1;
 	}
@@ -183,169 +157,174 @@ int llread(int fd,char *buffer, int C){
 	}
 
 	//bcc = makeBCC2( package, size-1);
-/*
+	/*
 	if(bcc == package[size-1]){//envia rr
-		if(pack_ID)
-				createAndSendPackage(fd, RR_0PACK);
-		else
-				createAndSendPackage(fd,RR_1PACK);
-	}
-	else{// envia rej
-		if(pack_ID)
-				createAndSendPackage(fd, REJ_1PACK);
-		else
-				createAndSendPackage(fd,REJ_0PACK);
-	}
-	*/
+	if(pack_ID)
+	createAndSendPackage(fd, RR_0PACK);
+	else
+	createAndSendPackage(fd,RR_1PACK);
+}
+else{// envia rej
+if(pack_ID)
+createAndSendPackage(fd, REJ_1PACK);
+else
+createAndSendPackage(fd,REJ_0PACK);
+}
+*/
 
-	buffer = realloc(buffer,size);
+buffer = realloc(buffer,size);
 
-	memcpy(buffer, package,size);
-	free(trama);
-	free(package);
-	printf("FIM READ\n");
+memcpy(buffer, package,size);
+free(trama);
+free(package);
+printf("FIM READ\n");
 
 
-	return 0;
+return 0;
 }
 
 int main(int argc, char** argv)
 {
-  int fd;
-  struct termios oldtio,newtio;
 
-  if ( (argc < 3) ||
-       ((strcmp("/dev/ttyS0", argv[1])!=0) &&
-        (strcmp("/dev/ttyS1", argv[1])!=0) )) {
-    printf("Usage:\tnserial SerialPort\n\tex: nserial /dev/ttyS0  RECEIVER||TRANSMITTER\n");
-    exit(1);
-  }
+char str[2] = "oi";
+llwrite(0, str, 2, 0);
+	/*
+	int fd;
+	struct termios oldtio,newtio;
 
-  if( (strcmp("RECEIVER", argv[2]) != 0) && (strcmp("TRANSMITTER", argv[2]) != 0))
-  {
-     printf("choose RECEIVER or TRANSMITTER\n");
-     exit(2);
-  }
+	if ( (argc < 3) ||
+	((strcmp("/dev/ttyS0", argv[1])!=0) &&
+	(strcmp("/dev/ttyS1", argv[1])!=0) )) {
+		printf("Usage:\tnserial SerialPort\n\tex: nserial /dev/ttyS0  RECEIVER||TRANSMITTER\n");
+		exit(1);
+	}
 
-  fd = open(argv[1], O_RDWR | O_NOCTTY|O_NONBLOCK);
-  if (fd <0) {perror(argv[1]); exit(-1); }
+	if( (strcmp("RECEIVER", argv[2]) != 0) && (strcmp("TRANSMITTER", argv[2]) != 0))
+	{
+		printf("choose RECEIVER or TRANSMITTER\n");
+		exit(2);
+	}
 
-  if ( tcgetattr(fd,&oldtio) == -1) { /* save current port settings */
-    perror("tcgetattr");
-    exit(-1);
-  }
+	fd = open(argv[1], O_RDWR | O_NOCTTY|O_NONBLOCK);
+	if (fd <0) {perror(argv[1]); exit(-1); }
 
-  bzero(&newtio, sizeof(newtio));
-  newtio.c_cflag = BAUDRATE | CS8 | CLOCAL | CREAD;
-  newtio.c_iflag = IGNPAR;
-  newtio.c_oflag = OPOST;
-  /* set input mode (non-canonical, no echo,...) */
-  newtio.c_lflag = 0;
-  newtio.c_cc[VTIME]    = 0;   /* inter-character timer unused */
-  newtio.c_cc[VMIN]     = 1;   /* blocking read until 5 chars received */
+	if ( tcgetattr(fd,&oldtio) == -1) { // save current port settings
+		perror("tcgetattr");
+		exit(-1);
+	}
+
+	bzero(&newtio, sizeof(newtio));
+	newtio.c_cflag = BAUDRATE | CS8 | CLOCAL | CREAD;
+	newtio.c_iflag = IGNPAR;
+	newtio.c_oflag = OPOST;
+	// set input mode (non-canonical, no echo,...)
+	newtio.c_lflag = 0;
+	newtio.c_cc[VTIME]    = 0;   // inter-character timer unused
+	newtio.c_cc[VMIN]     = 1;   // blocking read until 1 char received
 
 
-  tcflush(fd, TCIFLUSH);
+	tcflush(fd, TCIFLUSH);
 
-  if ( tcsetattr(fd,TCSANOW,&newtio) == -1) {
-    perror("tcsetattr");
-    exit(-1);
-  }
+	if ( tcsetattr(fd,TCSANOW,&newtio) == -1) {
+		perror("tcsetattr");
+		exit(-1);
+	}
 
-  int mode = 0;
-  if(strcmp("RECEIVER", argv[2]) == 0)
-     mode = RECEIVER;
-  else
-     mode = TRANSMITTER;
+	int mode = 0;
+	if(strcmp("RECEIVER", argv[2]) == 0)
+	mode = RECEIVER;
+	else
+	mode = TRANSMITTER;
 
 	if(mode == TRANSMITTER)
-		installAlarm();
+	installAlarm();
 
- 	llopen(mode, fd);
-	llclose(mode, fd);
+	llopen(mode, fd);
+	llclose(mode, fd);*/
 
-//TEST - DO NOT UNCOMMENT
-/*	if(mode == TRANSMITTER){
+	//TEST - DO NOT UNCOMMENT
+	/*	if(mode == TRANSMITTER){
 	char *test = malloc(2);
 	test[0] = 'a';
 	test[1] = 'b';
 	llwrite(fd, test, 2,0);
 	free(test);
-	}
-	else if(mode == RECEIVER){
-	char* test = malloc(20);
-	int size = llread(fd, test);
-	int t;
-	for(t= 0; t < size; t++){
-		printf("t: %x \n",(unsigned char)test[t]);
-	}
-	free(test);
+}
+else if(mode == RECEIVER){
+char* test = malloc(20);
+int size = llread(fd, test);
+int t;
+for(t= 0; t < size; t++){
+printf("t: %x \n",(unsigned char)test[t]);
+}
+free(test);
 
-        }*/
+}*/
 /*
-	 char *jesus = malloc(2);
-	jesus [0] = 0xF4;
-	jesus [1] = 0x7E;
-	 int l;
-	 printf("PRE Stuffing\n");
-        l= stuffing(jesus,2);
+char *jesus = malloc(2);
+jesus [0] = 0xF4;
+jesus [1] = 0x7E;
+int l;
+printf("PRE Stuffing\n");
+l= stuffing(jesus,2);
 
-	printf("Stuffing: SIZE: %d \n",l);
+printf("Stuffing: SIZE: %d \n",l);
 
-	int t;
-	for(t= 0; t < l; t++){
-		printf("t: %x \n",(unsigned char)jesus[t]);
-	}
+int t;
+for(t= 0; t < l; t++){
+printf("t: %x \n",(unsigned char)jesus[t]);
+}
 
-	l = deStuffing(jesus,l);
+l = deStuffing(jesus,l);
 
 
 printf("deStuffing: SIZE: %d \n",l);
 
-	for(t= 0; t < l; t++){
-		printf("t: %x \n",(unsigned char)jesus[t]);
-	}
+for(t= 0; t < l; t++){
+printf("t: %x \n",(unsigned char)jesus[t]);
+}
 
 
-	free(jesus);
+free(jesus);
 */
-  if ( tcsetattr(fd,TCSANOW,&oldtio) == -1) {
-    perror("tcsetattr");
-    exit(-1);
-  }
+/*
+if ( tcsetattr(fd,TCSANOW,&oldtio) == -1) {
+	perror("tcsetattr");
+	exit(-1);
+}
 
-  close(fd);
-  return 0;
+close(fd);*/
+return 0;
 }
 
 int llopenTransmitter(int fd)
 {
-  int noResponse = 1;
-  conta = 0;
+	int noResponse = 1;
+	conta = 0;
 
- 	while(conta < 4 && noResponse != COMPLETE)
-  	{
-	   if(flag)
-     	   {
-        	alarm(3);
-       		flag=0;
-        	createAndSendPackage(fd,SET_PACK);
-           }
-	 char C;
-     	 noResponse = receiveSupervision(fd,&C);
+	while(conta < 4 && noResponse != COMPLETE)
+	{
+		if(flag)
+		{
+			alarm(3);
+			flag=0;
+			createAndSendPackage(fd,SET_PACK);
+		}
+		char C;
+		noResponse = receiveSupervision(fd,&C);
 	}
-  printf("Connection opened with success\n");
-  return 0;
+	printf("Connection opened with success\n");
+	return 0;
 }
 
 int llopenReceiver(int fd)
 {
-  flag = 0; //To dont break processing package loop
+	flag = 0; //To dont break processing package loop
 	char C;
-  if(receiveSupervision(fd,&C) == COMPLETE)
-    createAndSendPackage(fd,UA_PACK);
-  printf("connection opened successfuly\n");
-  return 0;
+	if(receiveSupervision(fd,&C) == COMPLETE)
+	createAndSendPackage(fd,UA_PACK);
+	printf("connection opened successfuly\n");
+	return 0;
 }
 
 int llcloseTransmitter(int fd)
@@ -354,23 +333,23 @@ int llcloseTransmitter(int fd)
 	char C;
 	conta = 0;
 
- 	while(conta < 4 && noResponse != COMPLETE)
-        {
-	   if(createAndSendPackage(fd, DISC_PACK) == 5)
-	   {
-		alarm(3);
-		flag = 0;
+	while(conta < 4 && noResponse != COMPLETE)
+	{
+		if(createAndSendPackage(fd, DISC_PACK) == 5)
+		{
+			alarm(3);
+			flag = 0;
 
-	   	while(flag == 0 && noResponse != COMPLETE)
-	       		noResponse = receiveSupervision(fd, &C);
+			while(flag == 0 && noResponse != COMPLETE)
+			noResponse = receiveSupervision(fd, &C);
 
-	   }
+		}
 	}
 
 	if(conta < 4){
-	createAndSendPackage(fd,UA_PACK);//TODO NEED FIX SHOULD ONLY SEND ONCE
-	printf("connection closed sucessfully\n");
-	return 0;
+		createAndSendPackage(fd,UA_PACK);//TODO NEED FIX SHOULD ONLY SEND ONCE
+		printf("connection closed sucessfully\n");
+		return 0;
 	}
 	printf("no success closing connection\n");
 	return 1;
@@ -380,43 +359,43 @@ int llcloseReceiver(int fd)
 {
 	flag = 0; //To dont break processing package loop
 	char C;
-  if(receiveSupervision(fd,&C) == COMPLETE)
-    createAndSendPackage(fd,DISC_PACK);
+	if(receiveSupervision(fd,&C) == COMPLETE)
+	createAndSendPackage(fd,DISC_PACK);
 
 	if(receiveSupervision(fd,&C) == COMPLETE)
 	{
 		printf("connection closed successfully\n");
 		return 0;
 	}
-  return 1;
+	return 1;
 }
 
 int stuffing(char * package, int length){
 
-		int size = length;
-		int i;
-		for(i = 0; i < length;i++){
-			char oct = package[i];
-			if(oct == F_FLAG || oct == ESC){
-					size++;
-			}
+	int size = length;
+	int i;
+	for(i = 0; i < length;i++){
+		char oct = package[i];
+		if(oct == F_FLAG || oct == ESC){
+			size++;
 		}
-		package = realloc(package, size);
+	}
+	package = realloc(package, size);
 
-		for(i = 0; i < size; i++){
-		 char oct = package[i];
-		 if(oct == F_FLAG || oct == ESC){
-			 	 printf("moving");
-			 memmove(package + i + 2, package + i+1, size - i);
-			 printf("moved");
-			 if (oct == F_FLAG) {
-			 		package[i+1] = XOR_7E_20;
-					package[i] = ESC ;
-			 }
-			 else package[i+1] = XOR_7D_20;
-		 }
+	for(i = 0; i < size; i++){
+		char oct = package[i];
+		if(oct == F_FLAG || oct == ESC){
+			printf("moving");
+			memmove(package + i + 2, package + i+1, size - i);
+			printf("moved");
+			if (oct == F_FLAG) {
+				package[i+1] = XOR_7E_20;
+				package[i] = ESC ;
+			}
+			else package[i+1] = XOR_7D_20;
 		}
-		return size;
+	}
+	return size;
 }
 int deStuffing( char * package, int length){
 	int size = length;
@@ -427,21 +406,21 @@ int deStuffing( char * package, int length){
 		if(oct == ESC)
 		{
 			if(package[i+1] == XOR_7E_20){
-			 package[i] = F_FLAG;
-			 memmove(package + i + 1, package + i + 2,length - i + 2);
+				package[i] = F_FLAG;
+				memmove(package + i + 1, package + i + 2,length - i + 2);
 
-		 }
+			}
 			else if(package[i+1] == XOR_7D_20){
 				memmove(package + i + 1, package + i + 2,length - i + 2);
 			}
-			 size--;
+			size--;
 		}
 	}
 	package = realloc(package,size);
 	return size;
 }
 
-char  makeBCC2(char* message, int length){
+char makeBCC2(char* message, int length){
 	char bcc = 0;
 	int i;
 	for(i = 0; i < length; i++){
@@ -449,6 +428,7 @@ char  makeBCC2(char* message, int length){
 	}
 	return bcc;
 }
+
 int receiveSupervision(int fd,char * C)
 {
 	int status = 0;
@@ -472,8 +452,8 @@ int receiveSupervision(int fd,char * C)
 			case BCC_RCV:
 			status = receiveFlag(fd);
 			if(status == FLAG_RCV)
-				status = COMPLETE;
-				//printf("full package!\n");}
+			status = COMPLETE;
+			//printf("full package!\n");}
 			break;
 		}
 
@@ -491,9 +471,9 @@ int receiveFlag(int fd)
 
 	//printf("Flag value: %x \n",ch);
 	if(ch == F_FLAG)
-		return FLAG_RCV;
+	return FLAG_RCV;
 	else
-		return START;
+	return START;
 }
 
 int receiveA(int fd, char* ch)
@@ -502,9 +482,9 @@ int receiveA(int fd, char* ch)
 	res = read(fd, ch, 1);
 	//printf("readA %x \n",*ch);
 	if(res <= 0)
-		return START;
+	return START;
 	else if(*ch == F_FLAG)
-		return FLAG_RCV;
+	return FLAG_RCV;
 	return A_RCV;
 }
 
@@ -514,9 +494,9 @@ int receiveC(int fd, char* ch)
 	res = read(fd, ch, 1);
 	//printf("receiveC %x \n",*ch);
 	if(res <= 0)
-		return START;
+	return START;
 	else if(*ch == F_FLAG)
-		return FLAG_RCV;
+	return FLAG_RCV;
 	return C_RCV;
 }
 
@@ -527,9 +507,9 @@ int checkBCC(int fd, char A, char C)
 	char expected = A ^ C;
 
 	if(ch == expected)
-		return BCC_RCV;
+	return BCC_RCV;
 	else
-		return START;
+	return START;
 }
 
 char* createSet()
@@ -542,7 +522,7 @@ char* createSet()
 	set[3] = A_EM ^ C_SET;
 	set[4] = F_FLAG;
 
-return set;
+	return set;
 }
 
 char* createUA()
@@ -575,9 +555,9 @@ char* createRR(int package)
 	RR[0] = F_FLAG;
 	RR[1] = A_EM;
 	if(package == 0)
-		RR[2] = C_RR0;
+	RR[2] = C_RR0;
 	else if(package == 1)
-		RR[2] = C_RR1;
+	RR[2] = C_RR1;
 	RR[3] = RR[1] ^ RR[2];
 	RR[4] = F_FLAG;
 	return RR;
@@ -589,9 +569,9 @@ char* createREJ(int package)
 	REJ[0] = F_FLAG;
 	REJ[1] = A_EM;
 	if(package == 0)
-		REJ[2] = C_REJ0;
+	REJ[2] = C_REJ0;
 	else if(package == 1)
-		REJ[2] = C_REJ1;
+	REJ[2] = C_REJ1;
 	REJ[3] = REJ[1] ^ REJ[2];
 	REJ[4] = F_FLAG;
 	return REJ;
@@ -626,7 +606,7 @@ int createAndSendPackage(int fd,int type)
 		break;
 	}
 
- 	int res = sendMensage(fd,msg,5);
+	int res = sendMensage(fd,msg,5);
 
 	free(msg);
 	return res;
@@ -669,9 +649,7 @@ int packagePayLoad(int C, int size, char * payload){
 	buffer[3] = buffer[1] ^ buffer[2];
 	int i;
 	for(i = 0; i < size; i++)
-	{
 		buffer[i + 4] = payload[i];
-	}
 
 	buffer[tramaSize-1] = F_FLAG;
 	memcpy(payload, buffer, tramaSize);
@@ -680,7 +658,7 @@ int packagePayLoad(int C, int size, char * payload){
 
 	printf("TRAMA I size:%d\n",tramaSize);
 	for(i = 0; i < size +4 ; i++){
-			printf("t%d:%x\n",i,payload[i]);
+		printf("t%d:%x\n",i,payload[i]);
 	}
 
 	return tramaSize;
@@ -689,30 +667,30 @@ int sendMensage(int fd, char *message, int length)
 {
 	int res  = 0;
 	while(res <= 0){
-	res=write(fd, message, length);
-	//printf("sending... %d\n", res);
+		res=write(fd, message, length);
+		//printf("sending... %d\n", res);
 	}
-  return res;
+	return res;
 }
 
 int CHECK_RR_REJCT(int C, char ch){
 	if((C_RR1 == ch && C == 1) || (C_RR0 == ch && C==0))
-		return COMPLETE;
+	return COMPLETE;
 	else
-		return -1;
+	return -1;
 }
 
 //destroy trama
 int extractPackage(char *package, char *trama,int length){
-		// 5 is from F A C1 BBC1 |--| F
-		int packageSize = length-5;
-		if(length - 5 <= 0)
-			printf("extractPackage: length error: <= 0 \n");
-		package = realloc(package,packageSize);
-		memmove(trama,trama + 4,packageSize);
-		memcpy(package,trama, packageSize);
-		int size = deStuffing(package,packageSize);
-		return size;
+	// 5 is from F A C1 BBC1 |--| F
+	int packageSize = length-5;
+	if(length - 5 <= 0)
+	printf("extractPackage: length error: <= 0 \n");
+	package = realloc(package,packageSize);
+	memmove(trama,trama + 4,packageSize);
+	memcpy(package,trama, packageSize);
+	int size = deStuffing(package,packageSize);
+	return size;
 }
 
 int getTrama(int fd, char* trama){
@@ -727,17 +705,17 @@ int getTrama(int fd, char* trama){
 	int res;
 	printf("getting trama\n");
 	while(flags < 2){
-		 res = read(fd,&ch,1);
+		res = read(fd,&ch,1);
 		if( res > 0){
 			printf("package cell -- ");
 			if(ch == F_FLAG)
-				flags++;
+			flags++;
 
 			size++;
 			if(size > multi*TRAMA_SIZE)
 			{
-					multi *= 2;
-					trama = realloc(trama, multi * TRAMA_SIZE);
+				multi *= 2;
+				trama = realloc(trama, multi * TRAMA_SIZE);
 			}
 			trama[size - 1 ] = ch;
 		}
@@ -746,7 +724,7 @@ int getTrama(int fd, char* trama){
 
 	trama = realloc(trama, size);
 
-		//VALIDATE
+	//VALIDATE
 	printf("\ntrama received\n");
 	if((trama[1] ^ trama[2]) == trama[3]){
 		printf("BCC1 CHECK: TRUE\n" );
