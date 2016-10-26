@@ -6,7 +6,7 @@ int receiveA(int fd, char *ch);
 int receiveC(int fd, char *ch);
 int checkBCC(int fd, char A, char C);
 int receiveSupervision(int fd, char * C);
-int CHECK_RR_REJCT(int C, char ch);
+int checkRR_Reject(int C, char ch);
 
 void installAlarm();
 void atende();
