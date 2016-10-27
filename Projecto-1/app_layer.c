@@ -28,8 +28,6 @@ int main(int argc, char** argv){
 
 
 
-
-
 return 0;
 }
 
@@ -39,19 +37,21 @@ int transmitter(char * filename){
     //OPEN FILE
 
     FILE *file = NULL ;
-    char *filename = "pinguim.gif";
+
 
     if(openFile(&file, filename, "r") != 0)
-      return -1;
+      return 1;
 
     unsigned long size = getFileSize(file);
 
 
-
+    int fd = fileno(file); // TODO MUDAR PARA PORTA FD
     //OPEN CONECTION
-
-    
-
+    if(0 != llopen(TRANSMITTER,fd))
+    {
+      printf("Program will close .... \n");
+      return 1;
+    }
     //START signal
     //SEND File
     //END signal

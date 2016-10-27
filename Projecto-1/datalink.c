@@ -1,49 +1,6 @@
-#include <sys/types.h>
-#include <sys/stat.h>
-#include <fcntl.h>
-#include <termios.h>
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
-#include <unistd.h>
-#include "util.h"
-#include <signal.h>
-#include <errno.h>
 #include "datalink.h"
-
-#define BAUDRATE B38400
-#define MODEMDEVICE "/dev/ttyS1"
-#define _POSIX_SOURCE 1 /* POSIX compliant source */
-#define FALSE 0
-#define TRUE 1
-
-#define START 0
-#define FLAG_RCV 1
-#define A_RCV 2
-#define C_RCV 3
-#define BCC_RCV 4
-#define COMPLETE 5
-
-#define TRANSMITTER 0
-#define RECEIVER 1
-
-#define SET_PACK 0
-#define UA_PACK 1
-#define DISC_PACK 2
-#define RR_0PACK 3
-#define RR_1PACK 4
-#define REJ_0PACK 5
-#define REJ_1PACK 6
-
-#define DATA_PACK 1
-#define START_PACK 2
-#define END_PACK 3
-
-#define TRAMA_SIZE 64
-
-
 volatile int flag=1, conta=1;
-
+struct datalinkINFO dataINFO;
 
 void atende()                   // atende alarme
 {
@@ -61,11 +18,12 @@ void installAlarm(){
 //TODO: ver argumento porta pwp18
 int llopen(int flag, int fd)
 {
+	int status = 1;
 	if(flag == TRANSMITTER)
-	llopenTransmitter(fd);
+	status = llopenTransmitter(fd);
 	else if(flag == RECEIVER)
-	llopenReceiver(fd);
-	return 1;
+	status = llopenReceiver(fd);
+	return status;
 }
 
 int llclose(int flag, int fd)
@@ -196,7 +154,7 @@ int llread(int fd,char *buffer, int C){
 
 	return 0;
 }
-
+/*
 int main(int argc, char** argv)
 {
 
@@ -250,12 +208,12 @@ int main(int argc, char** argv)
 	if(mode == TRANSMITTER)
 		installAlarm();
 
-/*	llopen(mode, fd);
-	llclose(mode, fd);*/
+	llopen(mode, fd);
+	llclose(mode, fd);
 
 
 	//TEST - DO NOT UNCOMMENT
-	/*	if(mode == TRANSMITTER){
+		if(mode == TRANSMITTER){
 	char *test = malloc(2);
 	test[0] = 'a';
 	test[1] = 'b';
@@ -271,8 +229,8 @@ printf("t: %x \n",(unsigned char)test[t]);
 }
 free(test);
 
-}*/
-/*
+}
+
 char *jesus = malloc(2);
 jesus [0] = 0xF4;
 jesus [1] = 0x7E;
@@ -298,7 +256,7 @@ printf("t: %x \n",(unsigned char)jesus[t]);
 
 
 free(jesus);
-*/
+
 
 // TEST SEND AND RECEIVE
 
@@ -323,6 +281,7 @@ else if(mode == RECEIVER){
 	close(fd);
 	return 0;
 }
+*/
 
 int llopenTransmitter(int fd)
 {
@@ -340,15 +299,21 @@ int llopenTransmitter(int fd)
 		char C;
 		noResponse = receiveSupervision(fd,&C);
 	}
+	if(conta < 4)
+	{
 	printf("Connection opened with success\n");
 	return 0;
+  }
+	printf("unable to connect to receiver\n");
+	return 1;
 }
 
 int llopenReceiver(int fd)
 {
-	flag = 0; //To dont break processing package loop
+	flag = 0; //To dont break processing package loop //TODO WUT???
 	char C;
-	if(receiveSupervision(fd,&C) == COMPLETE)
+	printf("waiting for start pack\n");
+	if(receiveSupervision(fd,&C) == COMPLETE) // TODO meter as flags
 	createAndSendPackage(fd,UA_PACK);
 	printf("connection opened successfuly\n");
 	return 0;
@@ -769,4 +734,50 @@ int getTrama(int fd, char* trama){
 		return -1;
 	}
 
+}
+
+int openPORT(char * port, int length) {
+		dataINFO.port = strcpy(dataINFO.port, port);
+
+		dataINFO.fd = open(dataINFO.port, O_RDWR | O_NOCTTY|O_NONBLOCK);
+		if (dataINFO.fd <0) {
+			perror(port);
+			return 1;
+
+
+
+		}
+
+		if ( tcgetattr(dataINFO.fd,&dataINFO.oldtio) == -1) { // save current port settings
+			perror("tcgetattr");
+			return 1;
+		}
+
+		bzero(&dataINFO.newtio, sizeof(dataINFO.newtio));
+		dataINFO.newtio.c_cflag = BAUDRATE | CS8 | CLOCAL | CREAD;
+		dataINFO.newtio.c_iflag = IGNPAR;
+		dataINFO.newtio.c_oflag = OPOST;
+		// set input mode (non-canonical, no echo,...)
+		dataINFO.newtio.c_lflag = 0;
+		dataINFO.newtio.c_cc[VTIME]    = 0;   // inter-character timer unused
+		dataINFO.newtio.c_cc[VMIN]     = 1;   // blocking read until 1 char received
+
+
+		tcflush(dataINFO.fd, TCIFLUSH);
+
+		if (tcsetattr(dataINFO.fd,TCSANOW,&dataINFO.newtio) == -1) {
+			perror("tcsetattr");
+			return 1;
+		}
+
+return 0;
+}
+
+int closePORT(){
+	if ( tcsetattr(dataINFO.fd,TCSANOW,&dataINFO.oldtio) == -1) {
+		perror("tcsetattr");
+		return 1;
+	}
+	close(dataINFO.fd);
+	return 0;
 }
