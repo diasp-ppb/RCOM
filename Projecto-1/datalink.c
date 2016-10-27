@@ -110,8 +110,8 @@ int llwrite(int fd, char *buffer, int length, int C){
 			sendMensage(fd,copy,size);
 		}
 
-		int	noResponse = receiveSupervision(fd,&ch);
-		if(noResponse == COMPLETE){
+		noResponse = receiveSupervision(fd,&ch);
+		if(noResponse == COMPLETE && (ch == C_RR0 || ch == C_RR1 || ch == C_REJ0 || ch == C_REJ1)){
 			status = checkRR_Reject(C, ch);
 		}
 	}
@@ -164,11 +164,11 @@ int llread(int fd,char *buffer, int C){
 
 	if(bcc == package[size - 1])
 	{
-		printf("BCC2 check\n");
+		printf("BCC2 check: %d\n", C);
 		if(C == 1)
-		createAndSendPackage(fd, RR_0PACK);
+			createAndSendPackage(fd, RR_0PACK);
 		else if (C == 0)
-		createAndSendPackage(fd, RR_1PACK);
+			createAndSendPackage(fd, RR_1PACK);
 
 	}
 	else
@@ -309,7 +309,7 @@ if(mode == TRANSMITTER){
 }
 else if(mode == RECEIVER){
 	char *readBuffer = malloc(1);
-	llread(0, readBuffer, 0);
+	llread(fd, readBuffer, 0);
 	free(readBuffer);
 }
 
@@ -624,9 +624,11 @@ int createAndSendPackage(int fd,int type)
 		break;
 		case RR_0PACK:
 		msg = createRR(0);
+		printf("RR0\n");
 		break;
 		case RR_1PACK:
 		msg = createRR(1);
+		printf("RR1\n");
 		break;
 		case REJ_0PACK:
 		msg = createREJ(0);
