@@ -6,6 +6,9 @@
 #include "util.h"
 #include "datalink.c"
 
+#define TSIZE 0
+#define TNAME 1
+
 /**
  Open File
  Return 0 if sucess
@@ -19,3 +22,6 @@ int openFile(FILE ** file ,char * filename, char * mode);
 unsigned long getFileSize(FILE * file);
 
 int transmitter(char * filename);
+
+int createStartEndPackage(int type, char* filename, int size, unsigned char* package);
+int calculateNumBytes(int num);

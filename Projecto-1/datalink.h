@@ -44,7 +44,7 @@
 struct datalinkINFO{
   int fd;
   char* port;
-	struct termios oldtio;
+  struct termios oldtio;
   struct termios newtio;
 };
 

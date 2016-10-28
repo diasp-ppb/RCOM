@@ -16,23 +16,64 @@ void installAlarm(){
 
 
 //TODO: ver argumento porta pwp18
-int llopen(int flag, int fd)
+int llopen(char *port, int flag)
 {
+	struct termios oldtio,newtio;
+
+	dataINFO.fd = open(port, O_RDWR | O_NOCTTY | O_NONBLOCK);
+	if (dataINFO.fd < 0)
+	{perror(port); exit(-1); }
+
+	if ( tcgetattr(dataINFO.fd,&oldtio) == -1) { // save current port settings
+		perror("tcgetattr");
+		exit(-1);
+	}
+
+	bzero(&newtio, sizeof(newtio));
+	newtio.c_cflag = BAUDRATE | CS8 | CLOCAL | CREAD;
+	newtio.c_iflag = IGNPAR;
+	newtio.c_oflag = OPOST;
+	// set input mode (non-canonical, no echo,...)
+	newtio.c_lflag = 0;
+	newtio.c_cc[VTIME]    = 0;   // inter-character timer unused
+	newtio.c_cc[VMIN]     = 1;   // blocking read until 1 char received
+
+
+	tcflush(dataINFO.fd, TCIFLUSH);
+
+	if ( tcsetattr(dataINFO.fd,TCSANOW,&newtio) == -1) {
+		perror("tcsetattr");
+		exit(-1);
+	}
+
+	dataINFO.oldtio = oldtio;
+	dataINFO.newtio = newtio;
+	dataINFO.port = port;
+
 	int status = 1;
 	if(flag == TRANSMITTER)
-	status = llopenTransmitter(fd);
+	status = llopenTransmitter(dataINFO.fd);
 	else if(flag == RECEIVER)
-	status = llopenReceiver(fd);
+	status = llopenReceiver(dataINFO.fd);
+
 	return status;
 }
 
-int llclose(int flag, int fd)
+int llclose(int flag)
 {
 	if(flag == TRANSMITTER)
-	llcloseTransmitter(fd);
+		llcloseTransmitter(dataINFO.fd);
 	else if(flag == RECEIVER)
-	llcloseReceiver(fd);
-	sleep(5);
+		llcloseReceiver(dataINFO.fd);
+
+	sleep(2);
+
+	if ( tcsetattr(dataINFO.fd,TCSANOW,&dataINFO.oldtio) == -1) {
+		perror("tcsetattr");
+		exit(-1);
+	}
+
+	close(dataINFO.fd);
 	return 1;
 }
 
@@ -124,9 +165,9 @@ int llread(int fd,char *buffer, int C){
 	{
 		printf("BCC2 check: %d\n", C);
 		if(C == 1)
-			createAndSendPackage(fd, RR_0PACK);
+		createAndSendPackage(fd, RR_0PACK);
 		else if (C == 0)
-			createAndSendPackage(fd, RR_1PACK);
+		createAndSendPackage(fd, RR_1PACK);
 
 	}
 	else
@@ -158,67 +199,67 @@ int llread(int fd,char *buffer, int C){
 int main(int argc, char** argv)
 {
 
-	int fd;
-	struct termios oldtio,newtio;
+int fd;
+struct termios oldtio,newtio;
 
-	if ( (argc < 3) ||
-	((strcmp("/dev/ttyS0", argv[1])!=0) &&
-	(strcmp("/dev/ttyS1", argv[1])!=0) )) {
-		printf("Usage:\tnserial SerialPort\n\tex: nserial /dev/ttyS0  RECEIVER||TRANSMITTER\n");
-		exit(1);
-	}
+if ( (argc < 3) ||
+((strcmp("/dev/ttyS0", argv[1])!=0) &&
+(strcmp("/dev/ttyS1", argv[1])!=0) )) {
+printf("Usage:\tnserial SerialPort\n\tex: nserial /dev/ttyS0  RECEIVER||TRANSMITTER\n");
+exit(1);
+}
 
-	if( (strcmp("RECEIVER", argv[2]) != 0) && (strcmp("TRANSMITTER", argv[2]) != 0))
-	{
-		printf("choose RECEIVER or TRANSMITTER\n");
-		exit(2);
-	}
+if( (strcmp("RECEIVER", argv[2]) != 0) && (strcmp("TRANSMITTER", argv[2]) != 0))
+{
+printf("choose RECEIVER or TRANSMITTER\n");
+exit(2);
+}
 
-	fd = open(argv[1], O_RDWR | O_NOCTTY|O_NONBLOCK);
-	if (fd <0) {perror(argv[1]); exit(-1); }
+fd = open(argv[1], O_RDWR | O_NOCTTY|O_NONBLOCK);
+if (fd <0) {perror(argv[1]); exit(-1); }
 
-	if ( tcgetattr(fd,&oldtio) == -1) { // save current port settings
-		perror("tcgetattr");
-		exit(-1);
-	}
+if ( tcgetattr(fd,&oldtio) == -1) { // save current port settings
+perror("tcgetattr");
+exit(-1);
+}
 
-	bzero(&newtio, sizeof(newtio));
-	newtio.c_cflag = BAUDRATE | CS8 | CLOCAL | CREAD;
-	newtio.c_iflag = IGNPAR;
-	newtio.c_oflag = OPOST;
-	// set input mode (non-canonical, no echo,...)
-	newtio.c_lflag = 0;
-	newtio.c_cc[VTIME]    = 0;   // inter-character timer unused
-	newtio.c_cc[VMIN]     = 1;   // blocking read until 1 char received
-
-
-	tcflush(fd, TCIFLUSH);
-
-	if ( tcsetattr(fd,TCSANOW,&newtio) == -1) {
-		perror("tcsetattr");
-		exit(-1);
-	}
-
-	int mode = 0;
-	if(strcmp("RECEIVER", argv[2]) == 0)
-	mode = RECEIVER;
-	else
-	mode = TRANSMITTER;
-
-	if(mode == TRANSMITTER)
-		installAlarm();
-
-	llopen(mode, fd);
-	llclose(mode, fd);
+bzero(&newtio, sizeof(newtio));
+newtio.c_cflag = BAUDRATE | CS8 | CLOCAL | CREAD;
+newtio.c_iflag = IGNPAR;
+newtio.c_oflag = OPOST;
+// set input mode (non-canonical, no echo,...)
+newtio.c_lflag = 0;
+newtio.c_cc[VTIME]    = 0;   // inter-character timer unused
+newtio.c_cc[VMIN]     = 1;   // blocking read until 1 char received
 
 
-	//TEST - DO NOT UNCOMMENT
-		if(mode == TRANSMITTER){
-	char *test = malloc(2);
-	test[0] = 'a';
-	test[1] = 'b';
-	llwrite(fd, test, 2,0);
-	free(test);
+tcflush(fd, TCIFLUSH);
+
+if ( tcsetattr(fd,TCSANOW,&newtio) == -1) {
+perror("tcsetattr");
+exit(-1);
+}
+
+int mode = 0;
+if(strcmp("RECEIVER", argv[2]) == 0)
+mode = RECEIVER;
+else
+mode = TRANSMITTER;
+
+if(mode == TRANSMITTER)
+installAlarm();
+
+llopen(mode, fd);
+llclose(mode, fd);
+
+
+//TEST - DO NOT UNCOMMENT
+if(mode == TRANSMITTER){
+char *test = malloc(2);
+test[0] = 'a';
+test[1] = 'b';
+llwrite(fd, test, 2,0);
+free(test);
 }
 else if(mode == RECEIVER){
 char* test = malloc(20);
@@ -263,23 +304,23 @@ free(jesus);
 char str[2] = "oi";
 
 if(mode == TRANSMITTER){
-	llwrite(fd, str, 2, 0);
+llwrite(fd, str, 2, 0);
 }
 else if(mode == RECEIVER){
-	char *readBuffer = malloc(1);
-	llread(fd, readBuffer, 0);
-	free(readBuffer);
+char *readBuffer = malloc(1);
+llread(fd, readBuffer, 0);
+free(readBuffer);
 }
 
-	sleep(2);
+sleep(2);
 
-	if ( tcsetattr(fd,TCSANOW,&oldtio) == -1) {
-		perror("tcsetattr");
-		exit(-1);
-	}
+if ( tcsetattr(fd,TCSANOW,&oldtio) == -1) {
+perror("tcsetattr");
+exit(-1);
+}
 
-	close(fd);
-	return 0;
+close(fd);
+return 0;
 }
 */
 
@@ -301,9 +342,9 @@ int llopenTransmitter(int fd)
 	}
 	if(conta < 4)
 	{
-	printf("Connection opened with success\n");
-	return 0;
-  }
+		printf("Connection opened with success\n");
+		return 0;
+	}
 	printf("unable to connect to receiver\n");
 	return 1;
 }
@@ -737,40 +778,40 @@ int getTrama(int fd, char* trama){
 }
 
 int openPORT(char * port, int length) {
-		dataINFO.port = strcpy(dataINFO.port, port);
+	dataINFO.port = strcpy(dataINFO.port, port);
 
-		dataINFO.fd = open(dataINFO.port, O_RDWR | O_NOCTTY|O_NONBLOCK);
-		if (dataINFO.fd <0) {
-			perror(port);
-			return 1;
-
-
-
-		}
-
-		if ( tcgetattr(dataINFO.fd,&dataINFO.oldtio) == -1) { // save current port settings
-			perror("tcgetattr");
-			return 1;
-		}
-
-		bzero(&dataINFO.newtio, sizeof(dataINFO.newtio));
-		dataINFO.newtio.c_cflag = BAUDRATE | CS8 | CLOCAL | CREAD;
-		dataINFO.newtio.c_iflag = IGNPAR;
-		dataINFO.newtio.c_oflag = OPOST;
-		// set input mode (non-canonical, no echo,...)
-		dataINFO.newtio.c_lflag = 0;
-		dataINFO.newtio.c_cc[VTIME]    = 0;   // inter-character timer unused
-		dataINFO.newtio.c_cc[VMIN]     = 1;   // blocking read until 1 char received
+	dataINFO.fd = open(dataINFO.port, O_RDWR | O_NOCTTY|O_NONBLOCK);
+	if (dataINFO.fd <0) {
+		perror(port);
+		return 1;
 
 
-		tcflush(dataINFO.fd, TCIFLUSH);
 
-		if (tcsetattr(dataINFO.fd,TCSANOW,&dataINFO.newtio) == -1) {
-			perror("tcsetattr");
-			return 1;
-		}
+	}
 
-return 0;
+	if ( tcgetattr(dataINFO.fd,&dataINFO.oldtio) == -1) { // save current port settings
+		perror("tcgetattr");
+		return 1;
+	}
+
+	bzero(&dataINFO.newtio, sizeof(dataINFO.newtio));
+	dataINFO.newtio.c_cflag = BAUDRATE | CS8 | CLOCAL | CREAD;
+	dataINFO.newtio.c_iflag = IGNPAR;
+	dataINFO.newtio.c_oflag = OPOST;
+	// set input mode (non-canonical, no echo,...)
+	dataINFO.newtio.c_lflag = 0;
+	dataINFO.newtio.c_cc[VTIME]    = 0;   // inter-character timer unused
+	dataINFO.newtio.c_cc[VMIN]     = 1;   // blocking read until 1 char received
+
+
+	tcflush(dataINFO.fd, TCIFLUSH);
+
+	if (tcsetattr(dataINFO.fd,TCSANOW,&dataINFO.newtio) == -1) {
+		perror("tcsetattr");
+		return 1;
+	}
+
+	return 0;
 }
 
 int closePORT(){
