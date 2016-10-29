@@ -31,6 +31,10 @@ int main(int argc, char** argv){
         transmitter(argv[3]);
     //else if (mode == RECEIVER);
 
+    unsigned char *str = malloc(2);
+    str[0] = 'o';
+    str[1] = 'i';
+    createDataPackage(str, 2);
 
 //    llclose(mode);
 
@@ -67,10 +71,10 @@ int transmitter(char * filename){
 
 
     //END signal
-    unsigned char *end = malloc(1);
+/*    unsigned char *end = malloc(1);
     packSize = createStartEndPackage(END_PACK, filename, size, end);
 //    llwrite(start, packSize, 0);
-    free(end);
+    free(end);*/
 
     //CLOSE CONECTION
 
@@ -156,13 +160,14 @@ int createStartEndPackage(int type, char* filename, int size, unsigned char* pac
     package[i] = filename[j];
 
     /*    for(i = 0; i < packSize; i++)
-    printf("%d - %x \n", i, package[i]);*/
+    printf("%d - %x \n", i, package[i]);
 
+    getFileInfo(package, packSize, NULL, NULL);*/
 
     return packSize;
 }
 
-int createDataPackage(char *buffer, int size)
+int createDataPackage(unsigned char *buffer, int size)
 {
     int length = size + 4;
     buffer = realloc(buffer, length);
@@ -170,12 +175,14 @@ int createDataPackage(char *buffer, int size)
     memcpy(buffer + 4, buffer, size);
     buffer[0] = DATA_PACK;
     buffer[1] = 0; //TODO - what is N?
-    buffer[2] = (char) (size / 256);
-    buffer[3] = size % 256;
+    buffer[2] = (unsigned char) (size / 256);
+    buffer[3] = (unsigned char) (size % 256);
 
-    int i;
+/*    int i;
     for(i = 0; i < length; i++)
-    printf("%d - %x\n", i, buffer[i]);
+        printf("%d - %x\n", i, buffer[i]);
+
+    getData(buffer, length);*/
     return length;
 }
 
@@ -189,4 +196,53 @@ int calculateNumBytes(int num)
     }
 
     return bytes;
+}
+
+int getFileInfo(unsigned char* buffer, int buffsize, int *size, char *name)
+{
+    int fsize = 0;
+    int sizeLength = (int) buffer[2];
+    if(buffer[1] == TSIZE)
+    {
+        printf("sizeLength :%d\n", sizeLength);
+        int i;
+        for(i = 0; i < sizeLength; i++)
+        {
+            int j;
+            int curr = (int) buffer[3+i];
+            for(j = 0; j < i; j++)
+                curr = curr << 8;
+            fsize += curr;
+        }
+        printf("size: %d\n", fsize);
+    }
+    else
+        return 1;
+
+    int i = 3 + sizeLength;
+    if(buffer[i] == TNAME)
+    {
+        ++i;
+        int nameLength = (int) buffer[i];
+        ++i;
+        printf("nameLength: %d\n", nameLength);
+        name = realloc(name, nameLength);
+        int j;
+        for(j = 0; j < nameLength; j++)
+            name[j] = buffer[i + j];
+        printf("name: %s\n", name);
+    }
+    else
+        return 1;
+    return 0;
+}
+
+int getData(unsigned char *buffer, int size)
+{
+    int length = buffer[2] * 256 + buffer[3];
+
+    memcpy(buffer, buffer + 4, length);
+    buffer = realloc(buffer, length);
+
+    return length;
 }
