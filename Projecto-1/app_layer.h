@@ -21,6 +21,8 @@ int openFile(FILE ** file ,char * filename, char * mode);
 */
 unsigned long getFileSize(FILE * file);
 
+int createDataPackage(char *buffer, int size);
+
 int transmitter(char * filename);
 
 int createStartEndPackage(int type, char* filename, int size, unsigned char* package);

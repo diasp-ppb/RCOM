@@ -6,62 +6,72 @@
 int mode ;
 
 int main(int argc, char** argv){
-    /*
-    if ( argc < 3 || argc > 4) {
-    printf("Wrong number of arguments \n");
-    printf("Usage:\tnserial SerialPort\n\tex: nserial /dev/ttyS0  RECEIVER\n");
-    printf("      \tex: nserial /dev/ttyS0  TRANSMITTER  FilePath \n");
-    exit(1);
-}
+    int mode = 3;
+    if( argc == 3 && (strcmp("RECEIVER",argv[2]) == 0))
+        mode = RECEIVER;
+    else if( argc == 4  && (strcmp("TRANSMITTER",argv[2]) == 0))
+        mode = TRANSMITTER;
+    else {
+        printf("Wrong number of arguments \n");
+        printf("Usage:\tnserial SerialPort\n\tex: nserial /dev/ttyS0  RECEIVER\n");
+        printf("      \tex: nserial /dev/ttyS0  TRANSMITTER  FilePath \n");
+        exit(1);
+    }
 
-if (  (strcmp("/dev/ttyS0", argv[1])!=0) &&  (strcmp("/dev/ttyS1", argv[1])!=0) ) {
-printf("Wrong seraial port: choose /dev/ttyS0 or /dev/ttyS1 \n");
-exit(1);
-}
-
-int mode = 3;
-if( argc == 3 && (strcmp("RECEIVER",argv[2]) != 0))
-mode = RECEIVER;
-else if( argc == 4  && (strcmp("TRANSMITTER",argv[2]) != 0)){
-mode = TRANSMITTER;
-
-*/
-    FILE *file;
-    openFile(&file,"pinguim.gif", "r");
-    int size = getFileSize(file);
-    unsigned char *pack = malloc(1);
-    createStartEndPackage(END_PACK, "pinguim.gif", size, pack);
-    free(pack);
+    if (  (strcmp("/dev/ttyS0", argv[1])!=0) &&  (strcmp("/dev/ttyS1", argv[1])!=0) ) {
+        printf("Wrong seraial port: choose /dev/ttyS0 or /dev/ttyS1 \n");
+        exit(1);
+    }
 
 
 
-return 0;
+//    llopen(argv[1], mode);
+
+    if(mode == TRANSMITTER)
+        transmitter(argv[3]);
+    //else if (mode == RECEIVER);
+
+
+//    llclose(mode);
+
+    return 0;
 }
 
 int transmitter(char * filename){
     //TRANSMITTER
-
+    printf("%s\n", filename);
     //OPEN FILE
-
     FILE *file = NULL ;
-
 
     if(openFile(&file, filename, "r") != 0)
     return 1;
 
-    //unsigned long size = getFileSize(file);
+    unsigned long size = getFileSize(file);
 
-
-    int fd = fileno(file); // TODO MUDAR PARA PORTA FD
-    //OPEN CONECTION
+/*    int fd = fileno(file); // TODO MUDAR PARA PORTA FD
+  //OPEN CONECTION
     if(0 != llopen(TRANSMITTER,fd))
     {
-        printf("Program will close .... \n");
+        printf("llopen fail: program will close .... \n");
         return 1;
-    }
+    }*/
+
+    int packSize;
     //START signal
+    unsigned char *start = malloc(1);
+    packSize = createStartEndPackage(START_PACK, filename, size, start);
+//    llwrite(start, packSize, 0);
+    free(start);
+
     //SEND File
+
+
     //END signal
+    unsigned char *end = malloc(1);
+    packSize = createStartEndPackage(END_PACK, filename, size, end);
+//    llwrite(start, packSize, 0);
+    free(end);
+
     //CLOSE CONECTION
 
 
@@ -143,14 +153,32 @@ int createStartEndPackage(int type, char* filename, int size, unsigned char* pac
 
     int j;
     for(j = 0; j < nameLength; i++, j++)
-        package[i] = filename[j];
+    package[i] = filename[j];
 
-/*    for(i = 0; i < packSize; i++)
-        printf("%d - %x \n", i, package[i]);*/
+    /*    for(i = 0; i < packSize; i++)
+    printf("%d - %x \n", i, package[i]);*/
 
 
     return packSize;
 }
+
+int createDataPackage(char *buffer, int size)
+{
+    int length = size + 4;
+    buffer = realloc(buffer, length);
+
+    memcpy(buffer + 4, buffer, size);
+    buffer[0] = DATA_PACK;
+    buffer[1] = 0; //TODO - what is N?
+    buffer[2] = (char) (size / 256);
+    buffer[3] = size % 256;
+
+    int i;
+    for(i = 0; i < length; i++)
+    printf("%d - %x\n", i, buffer[i]);
+    return length;
+}
+
 
 int calculateNumBytes(int num)
 {

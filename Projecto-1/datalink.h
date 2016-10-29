@@ -67,9 +67,8 @@ int llopenReceiver(int fd);
 int llcloseTransmitter(int fd);
 int llcloseReceiver(int fd);
 
-int llwrite(int fd, char *buffer, int length,int C);
+int llwrite(char *buffer, int length,int C);
 int llread(int fd, char *buffer, int C);
-int llstart(int fd, char* filename, int length, unsigned int size, int type);
 
 int stuffing(char * package, int length);
 int deStuffing(char * package, int length);
@@ -81,3 +80,6 @@ int getTrama (int fd, char* trama);
 int extractPackage(char *package, char *trama,int length);
 
 char makeBCC2(char* message, int length);
+
+int openPort(char * port);
+int closePort();

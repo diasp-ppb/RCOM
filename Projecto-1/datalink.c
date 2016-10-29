@@ -18,43 +18,12 @@ void installAlarm(){
 //TODO: ver argumento porta pwp18
 int llopen(char *port, int flag)
 {
-	struct termios oldtio,newtio;
-
-	dataINFO.fd = open(port, O_RDWR | O_NOCTTY | O_NONBLOCK);
-	if (dataINFO.fd < 0)
-	{perror(port); exit(-1); }
-
-	if ( tcgetattr(dataINFO.fd,&oldtio) == -1) { // save current port settings
-		perror("tcgetattr");
-		exit(-1);
-	}
-
-	bzero(&newtio, sizeof(newtio));
-	newtio.c_cflag = BAUDRATE | CS8 | CLOCAL | CREAD;
-	newtio.c_iflag = IGNPAR;
-	newtio.c_oflag = OPOST;
-	// set input mode (non-canonical, no echo,...)
-	newtio.c_lflag = 0;
-	newtio.c_cc[VTIME]    = 0;   // inter-character timer unused
-	newtio.c_cc[VMIN]     = 1;   // blocking read until 1 char received
-
-
-	tcflush(dataINFO.fd, TCIFLUSH);
-
-	if ( tcsetattr(dataINFO.fd,TCSANOW,&newtio) == -1) {
-		perror("tcsetattr");
-		exit(-1);
-	}
-
-	dataINFO.oldtio = oldtio;
-	dataINFO.newtio = newtio;
-	dataINFO.port = port;
-
+	openPort(port);
 	int status = 1;
 	if(flag == TRANSMITTER)
-	status = llopenTransmitter(dataINFO.fd);
+		status = llopenTransmitter(dataINFO.fd);
 	else if(flag == RECEIVER)
-	status = llopenReceiver(dataINFO.fd);
+		status = llopenReceiver(dataINFO.fd);
 
 	return status;
 }
@@ -66,20 +35,13 @@ int llclose(int flag)
 	else if(flag == RECEIVER)
 		llcloseReceiver(dataINFO.fd);
 
-	sleep(2);
-
-	if ( tcsetattr(dataINFO.fd,TCSANOW,&dataINFO.oldtio) == -1) {
-		perror("tcsetattr");
-		exit(-1);
-	}
-
-	close(dataINFO.fd);
+	closePort();
 	return 1;
 }
 
 
-int llwrite(int fd, char *buffer, int length, int C){
-
+int llwrite(char *buffer, int length, int C){
+	int fd = dataINFO.fd;
 	char * copy = malloc(length + 1);
 	memcpy(copy,buffer,length);
 
@@ -634,7 +596,6 @@ int createAndSendPackage(int fd,int type)
 		break;
 		case RR_1PACK:
 		msg = createRR(1);
-		printf("RR1\n");
 		break;
 		case REJ_0PACK:
 		msg = createREJ(0);
@@ -777,22 +738,20 @@ int getTrama(int fd, char* trama){
 
 }
 
-int openPORT(char * port, int length) {
-	dataINFO.port = strcpy(dataINFO.port, port);
+int openPort(char * port) {
+	dataINFO.port = port;
 
 	dataINFO.fd = open(dataINFO.port, O_RDWR | O_NOCTTY|O_NONBLOCK);
 	if (dataINFO.fd <0) {
 		perror(port);
 		return 1;
-
-
-
 	}
 
 	if ( tcgetattr(dataINFO.fd,&dataINFO.oldtio) == -1) { // save current port settings
 		perror("tcgetattr");
 		return 1;
 	}
+	printf("old tio\n");
 
 	bzero(&dataINFO.newtio, sizeof(dataINFO.newtio));
 	dataINFO.newtio.c_cflag = BAUDRATE | CS8 | CLOCAL | CREAD;
@@ -814,7 +773,8 @@ int openPORT(char * port, int length) {
 	return 0;
 }
 
-int closePORT(){
+int closePort(){
+	sleep(2);
 	if ( tcsetattr(dataINFO.fd,TCSANOW,&dataINFO.oldtio) == -1) {
 		perror("tcsetattr");
 		return 1;
