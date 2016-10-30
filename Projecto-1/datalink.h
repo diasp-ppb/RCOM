@@ -68,7 +68,7 @@ int llcloseTransmitter(int fd);
 int llcloseReceiver(int fd);
 
 int llwrite(char *buffer, int length,int C);
-int llread(int fd, char *buffer, int C);
+int llread(char *buffer, int C);
 
 int stuffing(char * package, int length);
 int deStuffing(char * package, int length);

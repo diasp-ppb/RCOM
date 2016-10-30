@@ -25,18 +25,14 @@ int main(int argc, char** argv){
 
 
 
-//    llopen(argv[1], mode);
+    llopen(argv[1], mode);
 
     if(mode == TRANSMITTER)
         transmitter(argv[3]);
-    //else if (mode == RECEIVER);
+    else if (mode == RECEIVER)
+        receiver();
 
-    unsigned char *str = malloc(2);
-    str[0] = 'o';
-    str[1] = 'i';
-    createDataPackage(str, 2);
-
-//    llclose(mode);
+    llclose(mode);
 
     return 0;
 }
@@ -52,29 +48,22 @@ int transmitter(char * filename){
 
     unsigned long size = getFileSize(file);
 
-/*    int fd = fileno(file); // TODO MUDAR PARA PORTA FD
-  //OPEN CONECTION
-    if(0 != llopen(TRANSMITTER,fd))
-    {
-        printf("llopen fail: program will close .... \n");
-        return 1;
-    }*/
 
     int packSize;
     //START signal
     unsigned char *start = malloc(1);
     packSize = createStartEndPackage(START_PACK, filename, size, start);
-//    llwrite(start, packSize, 0);
+    llwrite(start, packSize, 0);
     free(start);
 
     //SEND File
 
 
     //END signal
-/*    unsigned char *end = malloc(1);
+    unsigned char *end = malloc(1);
     packSize = createStartEndPackage(END_PACK, filename, size, end);
-//    llwrite(start, packSize, 0);
-    free(end);*/
+    llwrite(start, packSize, 0);
+    free(end);
 
     //CLOSE CONECTION
 
@@ -90,11 +79,40 @@ int transmitter(char * filename){
 
 int receiver(){
     //RECEIVER
-    //receive OPEN CONECTION request
+
     //receive START signal
+    char *start = malloc(1);
+    int startSize = llread(start, 0);
+    int size;
+    char *name = malloc(1);
+    getFileInfo(start, startSize, &size, name);
+    printf("Start Read name: %s - size: %d \n", name, size);
+
+
+    FILE *file = NULL;
+    if(openFile(&file, name, "w") != 0)
+      printf("opened file\n");
+
+
+  /*  if(createFile(file, name) != 0)
+    {
+      printf("error creating file\n");
+      return 1;
+    }*/
+    free(name);
+
+
     //receive and save  File
+
+
     //receive END signal
-    //receive CLOSE CONECTION
+    char *end = malloc(1);
+    int endSize = llread(end, 0);
+    *name = malloc(1);
+    getFileInfo(end, endSize, &size, name);
+    printf("End Read name: %s - size: %d \n", name, size);
+    free(name);
+
 
     return 0;
 }
@@ -106,7 +124,7 @@ type = TRANSMITTER / RECEIVER
 int openFile(FILE ** file ,char * filename, char * mode){
     *file = fopen(filename, mode);
     if( *file == NULL){
-        printf("File doens't exist! \n");
+        printf("File doesn't exist! \n");
         return -1;
     }
     if(*file != NULL)
@@ -214,7 +232,8 @@ int getFileInfo(unsigned char* buffer, int buffsize, int *size, char *name)
                 curr = curr << 8;
             fsize += curr;
         }
-        printf("size: %d\n", fsize);
+        *size = fsize;
+      //  printf("size: %d\n", fsize);
     }
     else
         return 1;
@@ -229,8 +248,10 @@ int getFileInfo(unsigned char* buffer, int buffsize, int *size, char *name)
         name = realloc(name, nameLength);
         int j;
         for(j = 0; j < nameLength; j++)
-            name[j] = buffer[i + j];
-        printf("name: %s\n", name);
+          name[j] = buffer[i + j];
+        name[j]='\0';
+
+    //    printf("name: %s\n", name);
     }
     else
         return 1;

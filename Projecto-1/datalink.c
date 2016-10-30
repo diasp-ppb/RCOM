@@ -24,7 +24,6 @@ int llopen(char *port, int flag)
 		status = llopenTransmitter(dataINFO.fd);
 	else if(flag == RECEIVER)
 		status = llopenReceiver(dataINFO.fd);
-
 	return status;
 }
 
@@ -52,11 +51,11 @@ int llwrite(char *buffer, int length, int C){
 
 	size = packagePayLoad(C, size, copy);
 
-	int i;
+/*	int i;
 	printf("llwrite trama I : size:%d \n",size);
 	for(i = 0; i < size ; i ++){
 		printf("%d - %x\n",i, copy[i]);
-	}
+	}*/
 
 	int noResponse = 1;
 	char ch;
@@ -81,11 +80,10 @@ int llwrite(char *buffer, int length, int C){
 	return status;
 }
 
-int llread(int fd,char *buffer, int C){
-
-	char *trama  = malloc(8); //replace with 1
+int llread(char *buffer, int C){
+	int fd = dataINFO.fd;
+	char *trama  = malloc(TRAMA_SIZE);
 	int size  = getTrama(fd, trama);
-
 	/* //test
 	int size = 8;
 	trama[0] = 0x7E;
@@ -113,13 +111,12 @@ int llread(int fd,char *buffer, int C){
 	size = extractPackage(package,trama,size);
 	printf("package extracted:size %d \n",size);
 
-
 	size = deStuffing(package, size);
+/*
 	int i;
-
 	for(i = 0; i < size;i++){
 		printf("p: %x \n",(unsigned char) package[i]);
-	}
+	}*/
 
 	char bcc = makeBCC2( package, size-1);
 
@@ -150,12 +147,12 @@ int llread(int fd,char *buffer, int C){
 	memcpy(buffer, package,size);
 
 	free(package);
-
+/*
 	for(i = 0; i < size; i++){
 		printf("%d - %x - %c \n", i, buffer[i], buffer[i]);
-	}
+	}*/
 
-	return 0;
+	return size;
 }
 /*
 int main(int argc, char** argv)
@@ -288,6 +285,7 @@ return 0;
 
 int llopenTransmitter(int fd)
 {
+	installAlarm();
 	int noResponse = 1;
 	conta = 0;
 
@@ -317,7 +315,7 @@ int llopenReceiver(int fd)
 	char C;
 	printf("waiting for start pack\n");
 	if(receiveSupervision(fd,&C) == COMPLETE) // TODO meter as flags
-	createAndSendPackage(fd,UA_PACK);
+		createAndSendPackage(fd,UA_PACK);
 	printf("connection opened successfuly\n");
 	return 0;
 }
@@ -689,6 +687,10 @@ int extractPackage(char *package, char *trama,int length){
 	memmove(package, trama + 4, packageSize);
 	free(trama);
 
+	/*int i;
+	for(i = 0; i < packageSize; i++)
+		printf("i: %d - %x\n", i, package[i]);*/
+
 	int size = deStuffing(package,packageSize);
 
 	return size;
@@ -708,7 +710,7 @@ int getTrama(int fd, char* trama){
 	while(flags < 2){
 		res = read(fd,&ch,1);
 		if( res > 0){
-			printf("package cell -- ");
+	//		printf("package cell -- ");
 			if(ch == F_FLAG)
 			flags++;
 
@@ -751,7 +753,6 @@ int openPort(char * port) {
 		perror("tcgetattr");
 		return 1;
 	}
-	printf("old tio\n");
 
 	bzero(&dataINFO.newtio, sizeof(dataINFO.newtio));
 	dataINFO.newtio.c_cflag = BAUDRATE | CS8 | CLOCAL | CREAD;

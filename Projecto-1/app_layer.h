@@ -24,6 +24,7 @@ unsigned long getFileSize(FILE * file);
 int createDataPackage(unsigned char *buffer, int size);
 
 int transmitter(char * filename);
+int receiver();
 
 int createStartEndPackage(int type, char* filename, int size, unsigned char* package);
 int calculateNumBytes(int num);
