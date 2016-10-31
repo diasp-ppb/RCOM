@@ -40,6 +40,13 @@ int llclose(int flag)
 
 
 int llwrite(char *buffer, int length, int C){
+	/*int i;
+	printf("llwrite buffer : size:%d \n",length);
+	for(i = 0; i < length ; i ++){
+		printf("%d - %x\n",i, buffer[i]);
+	}*/
+
+
 	int fd = dataINFO.fd;
 	char * copy = malloc(length + 1);
 	memcpy(copy,buffer,length);
@@ -51,12 +58,12 @@ int llwrite(char *buffer, int length, int C){
 
 	size = packagePayLoad(C, size, copy);
 
-/*	int i;
-	printf("llwrite trama I : size:%d \n",size);
+
+/*printf("llwrite trama I : size:%d \n",size);
 	for(i = 0; i < size ; i ++){
 		printf("%d - %x\n",i, copy[i]);
-	}*/
-
+	}
+*/
 	int noResponse = 1;
 	char ch;
 	int status = -1;
@@ -85,17 +92,6 @@ int llread(char *buffer, int C){
 	int fd = dataINFO.fd;
 	char *trama  = malloc(TRAMA_SIZE);
 	int size  = getTrama(fd, trama);
-	/* //test
-	int size = 8;
-	trama[0] = 0x7E;
-	trama[1] = 0x03;
-	trama[2] = 0x00;
-	trama[3] = 0x03;
-	trama[4] = 0x6F;
-	trama[5] = 0x69;
-	trama[6] = 0x06;
-	trama[7] = 0x7E;*/
-
 	if(size < 5)
 	{
 		printf("Wrong trama: size: %d\n",size);
@@ -155,134 +151,6 @@ int llread(char *buffer, int C){
 
 	return size;
 }
-/*
-int main(int argc, char** argv)
-{
-
-int fd;
-struct termios oldtio,newtio;
-
-if ( (argc < 3) ||
-((strcmp("/dev/ttyS0", argv[1])!=0) &&
-(strcmp("/dev/ttyS1", argv[1])!=0) )) {
-printf("Usage:\tnserial SerialPort\n\tex: nserial /dev/ttyS0  RECEIVER||TRANSMITTER\n");
-exit(1);
-}
-
-if( (strcmp("RECEIVER", argv[2]) != 0) && (strcmp("TRANSMITTER", argv[2]) != 0))
-{
-printf("choose RECEIVER or TRANSMITTER\n");
-exit(2);
-}
-
-fd = open(argv[1], O_RDWR | O_NOCTTY|O_NONBLOCK);
-if (fd <0) {perror(argv[1]); exit(-1); }
-
-if ( tcgetattr(fd,&oldtio) == -1) { // save current port settings
-perror("tcgetattr");
-exit(-1);
-}
-
-bzero(&newtio, sizeof(newtio));
-newtio.c_cflag = BAUDRATE | CS8 | CLOCAL | CREAD;
-newtio.c_iflag = IGNPAR;
-newtio.c_oflag = OPOST;
-// set input mode (non-canonical, no echo,...)
-newtio.c_lflag = 0;
-newtio.c_cc[VTIME]    = 0;   // inter-character timer unused
-newtio.c_cc[VMIN]     = 1;   // blocking read until 1 char received
-
-
-tcflush(fd, TCIFLUSH);
-
-if ( tcsetattr(fd,TCSANOW,&newtio) == -1) {
-perror("tcsetattr");
-exit(-1);
-}
-
-int mode = 0;
-if(strcmp("RECEIVER", argv[2]) == 0)
-mode = RECEIVER;
-else
-mode = TRANSMITTER;
-
-if(mode == TRANSMITTER)
-installAlarm();
-
-llopen(mode, fd);
-llclose(mode, fd);
-
-
-//TEST - DO NOT UNCOMMENT
-if(mode == TRANSMITTER){
-char *test = malloc(2);
-test[0] = 'a';
-test[1] = 'b';
-llwrite(fd, test, 2,0);
-free(test);
-}
-else if(mode == RECEIVER){
-char* test = malloc(20);
-int size = llread(fd, test);
-int t;
-for(t= 0; t < size; t++){
-printf("t: %x \n",(unsigned char)test[t]);
-}
-free(test);
-
-}
-
-char *jesus = malloc(2);
-jesus [0] = 0xF4;
-jesus [1] = 0x7E;
-int l;
-printf("PRE Stuffing\n");
-l= stuffing(jesus,2);
-
-printf("Stuffing: SIZE: %d \n",l);
-
-int t;
-for(t= 0; t < l; t++){
-printf("t: %x \n",(unsigned char)jesus[t]);
-}
-
-l = deStuffing(jesus,l);
-
-
-printf("deStuffing: SIZE: %d \n",l);
-
-for(t= 0; t < l; t++){
-printf("t: %x \n",(unsigned char)jesus[t]);
-}
-
-
-free(jesus);
-
-
-// TEST SEND AND RECEIVE
-
-char str[2] = "oi";
-
-if(mode == TRANSMITTER){
-llwrite(fd, str, 2, 0);
-}
-else if(mode == RECEIVER){
-char *readBuffer = malloc(1);
-llread(fd, readBuffer, 0);
-free(readBuffer);
-}
-
-sleep(2);
-
-if ( tcsetattr(fd,TCSANOW,&oldtio) == -1) {
-perror("tcsetattr");
-exit(-1);
-}
-
-close(fd);
-return 0;
-}
-*/
 
 int llopenTransmitter(int fd)
 {
@@ -691,9 +559,8 @@ int extractPackage(char *package, char *trama,int length){
 	for(i = 0; i < packageSize; i++)
 		printf("i: %d - %x\n", i, package[i]);*/
 
-	int size = deStuffing(package,packageSize);
 
-	return size;
+	return packageSize;
 }
 
 int getTrama(int fd, char* trama){

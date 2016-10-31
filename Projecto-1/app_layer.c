@@ -43,10 +43,11 @@ int transmitter(char * filename){
     //OPEN FILE
     FILE *file = NULL ;
 
-    if(openFile(&file, filename, "r") != 0)
+    if(openFile(&file, filename, "r+") != 0)
     return 1;
 
     unsigned long size = getFileSize(file);
+    int bytesWritten = 0;
 
 
     int packSize;
@@ -57,22 +58,38 @@ int transmitter(char * filename){
     free(start);
 
     //SEND File
-  /*  char *data = malloc(256);
-    fread(data, 256, 1, file);
-    createDataPackage(data, 256);
-    llwrite(data, packSize, 1);
-    free(data);*/
-  /*  char *str = malloc(2);
-    str[0] = 'o';
-    str[1] = 'i';
-    int length = createDataPackage(str, 2);
-    llwrite(str, length, 1);
-*/
+    char *data = malloc(PACKSIZE);
+    while(bytesWritten < size)
+    {
+      int res = fread(data, 1, PACKSIZE, file);
+      int bytesRead = res;
+      printf("read res %d \n",res);
+
+      printf("data  before create  : size:%d \n",res);
+      int i;
+      for(i = 0; i < res ; i ++){
+        printf("%d - %x\n",i, data[i]);
+      }
+
+      res =  createDataPackage(data, res);
+
+      printf("data  after create : size:%d \n",res);
+
+      for(i = 0; i < res ; i ++){
+        printf("%d - %x\n",i, data[i]);
+      }
+      while(llwrite(data, res, 1) != COMPLETE){}
+      bytesWritten += bytesRead;
+      printf("written: %d - total: %d\n", bytesRead, bytesWritten);
+    }
+
+    free(data);
+
 
     //END signal
     char *end = malloc(1);
     packSize = createStartEndPackage(END_PACK, filename, size, end);
-    while(llwrite(start, packSize, 0) != COMPLETE){}
+    while(llwrite(end, packSize, 0) != COMPLETE){}
     free(end);
 
     //CLOSE CONECTION
@@ -100,7 +117,7 @@ int receiver(){
 
 
     FILE *file = NULL;
-    if(openFile(&file, name, "w") != 0)
+    if(openFile(&file, name, "w+") != 0)
       printf("opened file\n");
 
 
@@ -113,6 +130,16 @@ int receiver(){
 
 
     //receive and save  File
+    int bytesRead = 0;
+    char *buffer = malloc(PACKSIZE);
+    while(bytesRead < size){
+      int size;
+      size = llread(buffer, 1); //TODO - change C
+      size = getData(buffer, size);
+      fwrite(buffer, 1, size, file);
+      bytesRead += size;
+    }
+    free(buffer);
 
 
     //receive END signal
@@ -187,9 +214,9 @@ int createStartEndPackage(int type, char* filename, int size, char* package)
     for(j = 0; j < nameLength; i++, j++)
     package[i] = filename[j];
 
-    /*    for(i = 0; i < packSize; i++)
-    printf("%d - %x \n", i, package[i]);
-
+  //      for(i = 0; i < packSize; i++)
+  //  printf("%d - %x \n", i, package[i]);
+/*
     getFileInfo(package, packSize, NULL, NULL);*/
 
     return packSize;
@@ -198,19 +225,22 @@ int createStartEndPackage(int type, char* filename, int size, char* package)
 int createDataPackage(char *buffer, int size)
 {
     int length = size + 4;
+    char * copy = malloc(size);
+    memcpy(copy, buffer, size);
     buffer = realloc(buffer, length);
 
-    memcpy(buffer + 4, buffer, size);
     buffer[0] = DATA_PACK;
     buffer[1] = 0; //TODO - what is N?
     buffer[2] = (unsigned char) (size / 256);
     buffer[3] = (unsigned char) (size % 256);
 
+    memcpy(buffer+4, copy, size);
 /*    int i;
     for(i = 0; i < length; i++)
         printf("%d - %x\n", i, buffer[i]);
 
     getData(buffer, length);*/
+    free (copy);
     return length;
 }
 
@@ -237,7 +267,8 @@ int getFileInfo(char* buffer, int buffsize, int *size, char *name)
         for(i = 0; i < sizeLength; i++)
         {
             int j;
-            int curr = (int) buffer[3+i];
+            unsigned char ch = (unsigned char) buffer[3+i];
+            unsigned int curr = (unsigned int) ch;
             for(j = 0; j < i; j++)
                 curr = curr << 8;
             fsize += curr;

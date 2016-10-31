@@ -9,6 +9,8 @@
 #define TSIZE 0
 #define TNAME 1
 
+#define PACKSIZE 5
+
 /**
  Open File
  Return 0 if sucess
