@@ -64,9 +64,7 @@ int transmitter(char * filename){
     {
       int res = fread(data, 1, PACKSIZE, file);
       int bytesRead = res;
-      printf("read res %d \n",res);
 
-      printf("data  before create  : size:%d \n",res);
     //  int i;
   /*    for(i = 0; i < res ; i ++){
         printf("%d - %x\n",i, data[i]);
@@ -74,17 +72,16 @@ int transmitter(char * filename){
 */
       res =  createDataPackage(data, res);
 
-      printf("data  after create : size:%d \n",res);
 
     /*  for(i = 0; i < res ; i ++){
         printf("%d - %x\n",i, data[i]);
       }*/
-      while(llwrite(data, res, 1) != COMPLETE){}
+      while(llwrite(data, res, C) != COMPLETE){}
       bytesWritten += bytesRead;
-      //C ^= 1;
+      C ^= 1;
       printf("written: %d - total: %d\n", bytesRead, bytesWritten);
     }
-    printf("data: %p\n", data);
+
     free(data);
 
 
@@ -143,7 +140,7 @@ int receiver(){
       {
         fwrite(buffer, 1, size, file);
         bytesRead += size;
-        //C ^= 1;
+        C ^= 1;
         printf("total read: %d\n", bytesRead);
       }
     }

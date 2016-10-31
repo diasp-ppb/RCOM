@@ -40,11 +40,11 @@ int llclose(int flag)
 
 
 int llwrite(char *buffer, int length, int C){
-	int i;
+/*	int i;
 	printf("llwrite buffer : size:%d \n",length);
 	for(i = 0; i < length ; i ++){
 		printf("%d - %x\n",i, buffer[i]);
-	}
+	}*/
 
 
 	int fd = dataINFO.fd;
@@ -67,7 +67,7 @@ int llwrite(char *buffer, int length, int C){
 
 
 
-	printf("llwrite trama I : length: %d -  size:%d \n", length, size);
+	//printf("llwrite trama I : length: %d -  size:%d \n", length, size);
 /*	for(i = 0; i < size ; i ++){
 		printf("%d - %x - %c\n",i, copy[i], copy[i]);
 	}*/
@@ -91,7 +91,7 @@ int llwrite(char *buffer, int length, int C){
 			status = checkRR_Reject(C, cha);
 		}
 	}
-	printf("copy ptr: %p\n", copy);
+
 	free(copy);
 	return status;
 }
