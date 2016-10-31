@@ -59,6 +59,7 @@ int transmitter(char * filename){
 
     //SEND File
     char *data = malloc(PACKSIZE);
+    char C = 1;
     while(bytesWritten < size)
     {
       int res = fread(data, 1, PACKSIZE, file);
@@ -66,23 +67,24 @@ int transmitter(char * filename){
       printf("read res %d \n",res);
 
       printf("data  before create  : size:%d \n",res);
-      int i;
-      for(i = 0; i < res ; i ++){
+    //  int i;
+  /*    for(i = 0; i < res ; i ++){
         printf("%d - %x\n",i, data[i]);
       }
-
+*/
       res =  createDataPackage(data, res);
 
       printf("data  after create : size:%d \n",res);
 
-      for(i = 0; i < res ; i ++){
+    /*  for(i = 0; i < res ; i ++){
         printf("%d - %x\n",i, data[i]);
-      }
+      }*/
       while(llwrite(data, res, 1) != COMPLETE){}
       bytesWritten += bytesRead;
+      //C ^= 1;
       printf("written: %d - total: %d\n", bytesRead, bytesWritten);
     }
-
+    printf("data: %p\n", data);
     free(data);
 
 
@@ -131,13 +133,19 @@ int receiver(){
 
     //receive and save  File
     int bytesRead = 0;
+    char C = 1;
     char *buffer = malloc(PACKSIZE);
     while(bytesRead < size){
       int size;
-      size = llread(buffer, 1); //TODO - change C
+      size = llread(buffer, C); //TODO - change C
       size = getData(buffer, size);
-      fwrite(buffer, 1, size, file);
-      bytesRead += size;
+      if(size > 0)
+      {
+        fwrite(buffer, 1, size, file);
+        bytesRead += size;
+        //C ^= 1;
+        printf("total read: %d\n", bytesRead);
+      }
     }
     free(buffer);
 
@@ -303,8 +311,12 @@ int getData(char *buffer, int size)
 {
     int length = buffer[2] * 256 + buffer[3];
 
-    memcpy(buffer, buffer + 4, length);
-    buffer = realloc(buffer, length);
+    char *copy = malloc(length);
+
+    memcpy(copy, buffer + 4, length);
+    memcpy(buffer, copy, length);
+
+    free(copy);
 
     return length;
 }

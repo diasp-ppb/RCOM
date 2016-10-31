@@ -40,30 +40,38 @@ int llclose(int flag)
 
 
 int llwrite(char *buffer, int length, int C){
-	/*int i;
+	int i;
 	printf("llwrite buffer : size:%d \n",length);
 	for(i = 0; i < length ; i ++){
 		printf("%d - %x\n",i, buffer[i]);
-	}*/
+	}
 
 
 	int fd = dataINFO.fd;
-	char * copy = malloc(length + 1);
+
+	char * copy = malloc((length + 1) * 2);
 	memcpy(copy,buffer,length);
+
 
 	char bcc2 = makeBCC2(buffer, length);
 	copy[length] = bcc2;
 
+	/*for(i = 0; i < length + 1 ; i ++){
+		printf("%d - %x - %c\n",i, copy[i], copy[i]);
+	}*/
 	int size = stuffing(copy, length + 1);
+
+
 
 	size = packagePayLoad(C, size, copy);
 
 
-/*printf("llwrite trama I : size:%d \n",size);
-	for(i = 0; i < size ; i ++){
-		printf("%d - %x\n",i, copy[i]);
-	}
-*/
+
+	printf("llwrite trama I : length: %d -  size:%d \n", length, size);
+/*	for(i = 0; i < size ; i ++){
+		printf("%d - %x - %c\n",i, copy[i], copy[i]);
+	}*/
+
 	int noResponse = 1;
 	char ch;
 	int status = -1;
@@ -83,7 +91,7 @@ int llwrite(char *buffer, int length, int C){
 			status = checkRR_Reject(C, cha);
 		}
 	}
-
+	printf("copy ptr: %p\n", copy);
 	free(copy);
 	return status;
 }
@@ -104,8 +112,11 @@ int llread(char *buffer, int C){
 
 	printf("package Valid size, %d\n",size);
 
-	char *package = malloc(1);
-	size = extractPackage(package,trama,size);
+
+	size -= 5;
+	char *package = malloc(TRAMA_SIZE);
+	memmove(package, trama + 4, size);
+
 	printf("package extracted:size %d \n",size);
 
 	size = deStuffing(package, size);
@@ -139,7 +150,7 @@ int llread(char *buffer, int C){
 
 	size -= 1; //removes bcc2;
 
-	buffer = realloc(buffer, size);
+	//buffer = realloc(buffer, size);
 
 	memcpy(buffer, package,size);
 
@@ -246,8 +257,6 @@ int stuffing(char * package, int length){
 	if(size == length)
 	return size;
 
-	package = realloc(package, size);
-
 	for(i = 0; i < size; i++){
 		char oct = package[i];
 		if(oct == F_FLAG || oct == ESC) {
@@ -281,7 +290,7 @@ int deStuffing( char * package, int length){
 			size--;
 		}
 	}
-	package = realloc(package,size);
+
 	return size;
 }
 
@@ -550,10 +559,6 @@ int extractPackage(char *package, char *trama,int length){
 	// 5 is from F A C1 BBC1 |--| F
 	int packageSize = length - 5;
 
-	package = realloc(package,packageSize);
-
-	memmove(package, trama + 4, packageSize);
-	free(trama);
 
 	/*int i;
 	for(i = 0; i < packageSize; i++)

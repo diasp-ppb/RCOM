@@ -39,7 +39,7 @@
 #define START_PACK 2
 #define END_PACK 3
 
-#define TRAMA_SIZE 64
+#define TRAMA_SIZE 200
 
 struct datalinkINFO{
   int fd;
