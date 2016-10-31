@@ -21,13 +21,13 @@ int openFile(FILE ** file ,char * filename, char * mode);
 */
 unsigned long getFileSize(FILE * file);
 
-int createDataPackage(unsigned char *buffer, int size);
+int createDataPackage(char *buffer, int size);
 
 int transmitter(char * filename);
 int receiver();
 
-int createStartEndPackage(int type, char* filename, int size, unsigned char* package);
+int createStartEndPackage(int type, char* filename, int size, char* package);
 int calculateNumBytes(int num);
 
-int getFileInfo(unsigned char* buffer, int buffsize, int *size, char *name);
-int getData(unsigned char *buffer, int size);
+int getFileInfo(char* buffer, int buffsize, int *size, char *name);
+int getData(char *buffer, int size);

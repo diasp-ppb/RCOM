@@ -71,8 +71,9 @@ int llwrite(char *buffer, int length, int C){
 		}
 
 		noResponse = receiveSupervision(fd,&ch);
-		if(noResponse == COMPLETE && (ch == C_RR0 || ch == C_RR1 || ch == C_REJ0 || ch == C_REJ1)){
-			status = checkRR_Reject(C, ch);
+		unsigned char cha = (unsigned char) ch;
+		if(noResponse == COMPLETE && (cha == C_RR0 || cha == C_RR1 || cha == C_REJ0 || cha == C_REJ1)){
+			status = checkRR_Reject(C, cha);
 		}
 	}
 
@@ -488,7 +489,7 @@ int receiveC(int fd, char* ch)
 {
 	int res;
 	res = read(fd, ch, 1);
-	//printf("receiveC %x \n",*ch);
+	//printf("receiveC %x \n", (unsigned char)*ch);
 	if(res <= 0)
 	return START;
 	else if(*ch == F_FLAG)
@@ -590,7 +591,6 @@ int createAndSendPackage(int fd,int type)
 		break;
 		case RR_0PACK:
 		msg = createRR(0);
-		printf("RR0\n");
 		break;
 		case RR_1PACK:
 		msg = createRR(1);
@@ -671,8 +671,8 @@ int sendMensage(int fd, char *message, int length)
 	return res;
 }
 
-int checkRR_Reject(int C, char ch){
-	if((C_RR1 == ch && C == 1) || (C_RR0 == ch && C==0))
+int checkRR_Reject(int C, unsigned char ch){
+	if((C_RR1 == ch && C == 0) || (C_RR0 == ch && C==1))
 	return COMPLETE;
 	else
 	return -1;

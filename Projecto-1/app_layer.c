@@ -51,18 +51,28 @@ int transmitter(char * filename){
 
     int packSize;
     //START signal
-    unsigned char *start = malloc(1);
+    char *start = malloc(1);
     packSize = createStartEndPackage(START_PACK, filename, size, start);
-    llwrite(start, packSize, 0);
+    while(llwrite(start, packSize, 0) != COMPLETE){}
     free(start);
 
     //SEND File
-
+  /*  char *data = malloc(256);
+    fread(data, 256, 1, file);
+    createDataPackage(data, 256);
+    llwrite(data, packSize, 1);
+    free(data);*/
+  /*  char *str = malloc(2);
+    str[0] = 'o';
+    str[1] = 'i';
+    int length = createDataPackage(str, 2);
+    llwrite(str, length, 1);
+*/
 
     //END signal
-    unsigned char *end = malloc(1);
+    char *end = malloc(1);
     packSize = createStartEndPackage(END_PACK, filename, size, end);
-    llwrite(start, packSize, 0);
+    while(llwrite(start, packSize, 0) != COMPLETE){}
     free(end);
 
     //CLOSE CONECTION
@@ -108,7 +118,7 @@ int receiver(){
     //receive END signal
     char *end = malloc(1);
     int endSize = llread(end, 0);
-    *name = malloc(1);
+    name = malloc(1);
     getFileInfo(end, endSize, &size, name);
     printf("End Read name: %s - size: %d \n", name, size);
     free(name);
@@ -149,7 +159,7 @@ unsigned long getFileSize(FILE * file){
     return size;
 }
 
-int createStartEndPackage(int type, char* filename, int size, unsigned char* package)
+int createStartEndPackage(int type, char* filename, int size, char* package)
 {
     int nameLength = strlen(filename);
     int sizeLength = calculateNumBytes(size);
@@ -185,7 +195,7 @@ int createStartEndPackage(int type, char* filename, int size, unsigned char* pac
     return packSize;
 }
 
-int createDataPackage(unsigned char *buffer, int size)
+int createDataPackage(char *buffer, int size)
 {
     int length = size + 4;
     buffer = realloc(buffer, length);
@@ -216,7 +226,7 @@ int calculateNumBytes(int num)
     return bytes;
 }
 
-int getFileInfo(unsigned char* buffer, int buffsize, int *size, char *name)
+int getFileInfo(char* buffer, int buffsize, int *size, char *name)
 {
     int fsize = 0;
     int sizeLength = (int) buffer[2];
@@ -258,7 +268,7 @@ int getFileInfo(unsigned char* buffer, int buffsize, int *size, char *name)
     return 0;
 }
 
-int getData(unsigned char *buffer, int size)
+int getData(char *buffer, int size)
 {
     int length = buffer[2] * 256 + buffer[3];
 
