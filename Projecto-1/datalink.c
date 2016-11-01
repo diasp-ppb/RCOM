@@ -1,6 +1,7 @@
 #include "datalink.h"
 volatile int flag=1, conta=1;
 struct datalinkINFO dataINFO;
+struct datalinkConfig dataConfig;
 
 void atende()                   // atende alarme
 {
@@ -79,9 +80,9 @@ int llwrite(char *buffer, int length, int C){
 	flag = 1;
 	conta = 0;
 
-	while(conta < 4  && status != COMPLETE){
+	while(conta < dataConfig.numTransmissions  && status != COMPLETE){
 		if(flag){
-			alarm(3);
+			alarm(dataConfig.timeout);
 			flag=0;
 			sendMensage(fd,copy,size);
 			printf("sendMensage! \n");
@@ -180,18 +181,18 @@ int llopenTransmitter(int fd)
 	int noResponse = 1;
 	conta = 0;
 
-	while(conta < 4 && noResponse != COMPLETE)
+	while(conta < dataConfig.numTransmissions && noResponse != COMPLETE)
 	{
 		if(flag)
 		{
-			alarm(3);
+			alarm(dataConfig.timeout);
 			flag=0;
 			createAndSendPackage(fd,SET_PACK);
 		}
 		char C;
 		noResponse = receiveSupervision(fd,&C);
 	}
-	if(conta < 4)
+	if(conta < dataConfig.numTransmissions)
 	{
 		printf("Connection opened with success\n");
 		return 0;
@@ -217,11 +218,11 @@ int llcloseTransmitter(int fd)
 	char C;
 	conta = 0;
 
-	while(conta < 4 && noResponse != COMPLETE)
+	while(conta < dataConfig.numTransmissions && noResponse != COMPLETE)
 	{
 		if(createAndSendPackage(fd, DISC_PACK) == 5)
 		{
-			alarm(3);
+			alarm(dataConfig.timeout);
 			flag = 0;
 
 			while(flag == 0 && noResponse != COMPLETE)
@@ -230,7 +231,7 @@ int llcloseTransmitter(int fd)
 		}
 	}
 
-	if(conta < 4){
+	if(conta < dataConfig.numTransmissions){
 		createAndSendPackage(fd,UA_PACK);//TODO NEED FIX SHOULD ONLY SEND ONCE
 		printf("connection closed sucessfully\n");
 		return 0;
@@ -640,7 +641,7 @@ int getTrama(int fd, char* trama){
 
 int openPort(char * port) {
 	dataINFO.port = port;
-
+        readConfig();
 	dataINFO.fd = open(dataINFO.port, O_RDWR | O_NOCTTY|O_NONBLOCK);
 	if (dataINFO.fd <0) {
 		perror(port);
@@ -653,7 +654,7 @@ int openPort(char * port) {
 	}
 
 	bzero(&dataINFO.newtio, sizeof(dataINFO.newtio));
-	dataINFO.newtio.c_cflag = BAUDRATE | CS8 | CLOCAL | CREAD;
+	dataINFO.newtio.c_cflag = dataConfig.baudrate | CS8 | CLOCAL | CREAD;
 	dataINFO.newtio.c_iflag = IGNPAR;
 	dataINFO.newtio.c_oflag = OPOST;
 	// set input mode (non-canonical, no echo,...)
@@ -680,4 +681,106 @@ int closePort(){
 	}
 	close(dataINFO.fd);
 	return 0;
+}
+
+int readConfig(){
+   FILE *file;
+   file = fopen("config.txt", "r");
+   if(file == NULL){
+	printf("failed to open config.txt\n");
+        exit(1);
+   }
+
+   char *line = malloc(256);
+   size_t length;
+   if(getline(&line, &length, file) == -1){
+	printf("failed to read baudrate\n");
+	exit(1);
+   }
+   dataConfig.baudrate = strtol(line, NULL, 10);
+
+
+   if(getline(&line, &length, file) == -1){
+	printf("failed to read sequenceNumber\n");
+	exit(1);
+   }
+   dataConfig.sequenceNumber = strtol(line, NULL, 10);
+   if(dataConfig.sequenceNumber != 0 && dataConfig.sequenceNumber != 1){
+	printf("invalid sequenceNumber, applying sequence Number 0\n");
+	dataConfig.sequenceNumber = 0;
+   }
+
+
+   if(getline(&line, &length, file) == -1){
+	printf("failed to read timeout\n");
+	exit(1);
+   }
+   dataConfig.timeout = strtol(line, NULL, 10);
+   if(dataConfig.timeout < 1){
+	printf("invalid timeout, applying timeout 3\n");
+  	dataConfig.timeout = 3;
+   }
+
+   if(getline(&line, &length, file) == -1){
+	printf("failed to read numTransmissions\n");
+	exit(1);
+   }
+   dataConfig.numTransmissions = strtol(line, NULL, 10);
+   if(dataConfig.numTransmissions < 1){
+	printf("invalid numTransmissions, applying  3\n");
+  	dataConfig.numTransmissions = 3;
+   }
+
+   if(getline(&line, &length, file) == -1){
+	printf("failed to read packageSize\n");
+	exit(1);
+   } 
+   dataConfig.packageSize = strtol(line, NULL, 10);
+   if(dataConfig.packageSize < 1){
+	printf("invalid packageSize, applying packageSize 128\n");
+  	dataConfig.packageSize = 128;
+   }
+	
+   
+   switch(dataConfig.baudrate){
+	case(300):
+	dataConfig.baudrate = B300;
+	break;
+	case(1200):
+	dataConfig.baudrate = B1200;
+	break;
+	case(2400):
+	dataConfig.baudrate = B2400;
+	break;
+	case(4800):
+	dataConfig.baudrate = B4800;
+	break;
+	case(9600):
+	dataConfig.baudrate = B9600;
+	break;
+	case(19200):
+	dataConfig.baudrate = B19200;
+	break;
+ 	case(38400):
+	dataConfig.baudrate = B38400;
+	break;
+	case(57600):
+	dataConfig.baudrate = B57600;
+	break;
+	case(115200):
+	dataConfig.baudrate = B115200;
+	break;
+	case(230400):
+	dataConfig.baudrate = B230400;
+	break;
+	default:
+	printf("Invalid Baudrate, applying B38400\n");
+	dataConfig.baudrate = B38400;
+	break;
+   }
+
+   
+   free(line);
+   fclose(file);
+   return 0;
 }

@@ -48,6 +48,14 @@ struct datalinkINFO{
   struct termios newtio;
 };
 
+struct datalinkConfig{
+  int baudrate;
+  unsigned int sequenceNumber;
+  unsigned int timeout;
+  unsigned int numTransmissions;
+  unsigned int packageSize;
+};
+
 char * createSet();
 int sendMensage(int fd, char *message, int length);
 int createAndSendPackage(int fd, int type);
@@ -83,3 +91,5 @@ char makeBCC2(char* message, int length);
 
 int openPort(char * port);
 int closePort();
+
+int readConfig();
