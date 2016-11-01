@@ -157,7 +157,7 @@ int receiver(){
     //receive and save  File
     int bytesRead = 0;
     char C = 1;
-    char *buffer = malloc(PACKSIZE);
+    char *buffer = malloc(TRAMA_SIZE);
     while(bytesRead < size){
       int size;
       while((size = llread(buffer, C)) <= 0) {} //TODO - change C
@@ -330,18 +330,19 @@ int getFileInfo(char* buffer, int buffsize, int *size, char *name)
 }
 
 int getData(char *buffer, int size)
-{
+{	
     int package = (unsigned int) buffer[1];
     printf("package: %u\n", (unsigned char) package);
 
-    int length = buffer[2] * 256 + buffer[3];
-
+    unsigned char l1 = (unsigned char) buffer[2];
+    unsigned char l2 = (unsigned char) buffer[3];
+    int length = (int) (256*l1 + l2);
+    printf("length: %x \n", length);
     char *copy = malloc(length);
 
     memcpy(copy, buffer + 4, length);
     memcpy(buffer, copy, length);
 
     free(copy);
-
     return length;
 }

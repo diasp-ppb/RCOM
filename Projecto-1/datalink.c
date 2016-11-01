@@ -123,8 +123,8 @@ int llread(char *buffer, int C){
 	int Ctrama = trama[2];
 	size -= 5;
 	char *package = malloc(TRAMA_SIZE);
-	memmove(package, trama + 4, size);
 
+	memmove(package, trama + 4, size);
 	printf("package extracted:size %d \n",size);
 
 	size = deStuffing(package, size);
@@ -164,7 +164,6 @@ int llread(char *buffer, int C){
 	size -= 1; //removes bcc2;
 
 	//buffer = realloc(buffer, size);
-
 	memcpy(buffer, package,size);
 
 	free(package);
@@ -172,7 +171,6 @@ int llread(char *buffer, int C){
 	for(i = 0; i < size; i++){
 		printf("%d - %x - %c \n", i, buffer[i], buffer[i]);
 	}*/
-
 	return size;
 }
 
