@@ -25,7 +25,9 @@ int main(int argc, char** argv){
 
 
 
-    llopen(argv[1], mode);
+    if(llopen(argv[1], mode) != 0){
+      exit(1);
+    }
 
     if(mode == TRANSMITTER)
         transmitter(argv[3]);
@@ -54,7 +56,12 @@ int transmitter(char * filename){
     //START signal
     char *start = malloc(1);
     packSize = createStartEndPackage(START_PACK, filename, size, start);
-    while(llwrite(start, packSize, 0) != COMPLETE){}
+
+    if(llwrite(start, packSize, 0) != COMPLETE)
+    {
+      free(start);
+      exit(1);
+    }
     free(start);
 
     //SEND File
@@ -100,8 +107,14 @@ int transmitter(char * filename){
 
     //END signal
     char *end = malloc(1);
+    sleep(2);
     packSize = createStartEndPackage(END_PACK, filename, size, end);
-    while(llwrite(end, packSize, 0) != COMPLETE){}
+    if(llwrite(end, packSize, 0) != COMPLETE)
+    {
+      printf("Unable to send END PACKAGE\n" );
+      free(end);
+      exit(1);
+    }
     free(end);
 
     //CLOSE CONECTION
