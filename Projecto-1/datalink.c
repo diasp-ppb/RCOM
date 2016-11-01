@@ -11,10 +11,10 @@ int TRAMA_SIZE;
 
 void atende()                   // atende alarme
 {
-//	printf("alarme # %d\n", conta);
+	printf("alarme # %d\n", conta);
 	flag=1;
-	dataStats.resent++;
 	dataStats.timeouts++;
+	dataStats.resent++;
 	conta++;
 }
 
@@ -80,6 +80,8 @@ int llwrite(char *buffer, int length, int C){
 			flag=0;
 			sendMensage(fd,copy,size);
 			dataStats.sent++;
+			//if(conta != 0)
+			//dataStats.resent++;
 		}
 
 		noResponse = receiveSupervision(fd,&ch);
@@ -87,10 +89,12 @@ int llwrite(char *buffer, int length, int C){
 
 		if(noResponse == COMPLETE && (cha == C_RR0 || cha == C_RR1 || cha == C_REJ0 || cha == C_REJ1)){
 			status = checkRR_Reject(C, cha);
-			if(cha == C_REJ0 || cha == C_REJ1)
+			if(noResponse == COMPLETE && (cha == C_REJ0 || cha == C_REJ1))
 			{
 				dataStats.rej++;
+				dataStats.resent++;
 				flag = 1;
+				printf("Recebeu reject\n");
 				alarm(0);
 			}
 		}
@@ -132,13 +136,13 @@ int llread(char *buffer, int C){
 	char bcc = makeBCC2( package, size-1);
 
 	if(bcc == package[size - 1])
-	{	
+	{
 		//printf("BCC2 check: %d\n", C);
 		if(Ctrama == 1)
 		createAndSendPackage(fd, RR_0PACK);
 		else if (Ctrama == 0)
 		createAndSendPackage(fd, RR_1PACK);
-		
+
 		if(C != Ctrama){
 		//	printf("pacote repetido\n");
 			return -1;
@@ -152,13 +156,13 @@ int llread(char *buffer, int C){
 		else if (C == 0)
 		createAndSendPackage(fd, REJ_0PACK);
 
-		dataStats.rej++;		
+		dataStats.rej++;
 		dataStats.sent++;
 		return -1;
 	}
 
 	size -= 1; //removes bcc2;
-	
+
 	dataStats.sent++;
 	memcpy(buffer, package,size);
 
@@ -775,7 +779,7 @@ void initStats()
 }
 
 void printStats(int mode)
-{	
+{
 	if(TRANSMITTER == mode){
 	printf("Resent packages: %d\n", dataStats.resent);
 	printf("Sent packages: %d\n", dataStats.sent);
