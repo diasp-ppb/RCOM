@@ -88,8 +88,11 @@ int llwrite(char *buffer, int length, int C){
 		if(noResponse == COMPLETE && (cha == C_RR0 || cha == C_RR1 || cha == C_REJ0 || cha == C_REJ1)){
 			status = checkRR_Reject(C, cha);
 			if(cha == C_REJ0 || cha == C_REJ1)
+			{
 				dataStats.rej++;
-
+				flag = 1;
+				alarm(0);
+			}
 		}
 	}
 
@@ -129,32 +132,34 @@ int llread(char *buffer, int C){
 	char bcc = makeBCC2( package, size-1);
 
 	if(bcc == package[size - 1])
-	{
+	{	
 		//printf("BCC2 check: %d\n", C);
 		if(Ctrama == 1)
 		createAndSendPackage(fd, RR_0PACK);
 		else if (Ctrama == 0)
 		createAndSendPackage(fd, RR_1PACK);
-
+		
 		if(C != Ctrama){
 		//	printf("pacote repetido\n");
 			return -1;
 		}
-
 	}
 	else
 	{
-		//printf("BCC2 fail\n");
+		printf("    BCC2 fail\n");
 		if(C == 1)
 		createAndSendPackage(fd, REJ_1PACK);
 		else if (C == 0)
 		createAndSendPackage(fd, REJ_0PACK);
 
+		dataStats.rej++;		
+		dataStats.sent++;
 		return -1;
 	}
 
 	size -= 1; //removes bcc2;
-
+	
+	dataStats.sent++;
 	memcpy(buffer, package,size);
 
 	free(package);
@@ -192,7 +197,7 @@ int llopenReceiver(int fd)
 {
 	flag = 0; //To dont break processing package loop
 	char C;
-	printf("waiting for start pack\n");
+	//printf("waiting for start pack\n");
 	if(receiveSupervision(fd,&C) == COMPLETE) // TODO meter as flags
 		createAndSendPackage(fd,UA_PACK);
 	printf("connection opened successfuly\n");
@@ -560,7 +565,7 @@ int getTrama(int fd, char* trama){
 
 	char ch;
 	int res;
-	printf("getting trama\n");
+	//printf("getting trama\n");
 
 	while(flags <1){
 		res = read(fd, &ch, 1);
@@ -592,13 +597,13 @@ int getTrama(int fd, char* trama){
 	}
 
 	//VALIDATE
-	printf("\ntrama received\n");
+	//printf("\ntrama received\n");
 	if((trama[1] ^ trama[2]) == trama[3]){
-		printf("BCC1 CHECK: TRUE\n" );
+		//printf("BCC1 CHECK: TRUE\n" );
 		return size;
 	}
 	else{
-		printf("BCC1 CHECK: FALSE\n" );
+		//printf("BCC1 CHECK: FALSE\n" );
 		return -1;
 	}
 
@@ -764,15 +769,20 @@ int getSequenceNumber()
 void initStats()
 {
 	dataStats.resent = 0;
-  dataStats.sent = 0;
-  dataStats.timeouts = 0;
-  dataStats.rej = 0;
+  	dataStats.sent = 0;
+  	dataStats.timeouts = 0;
+  	dataStats.rej = 0;
 }
 
-void printStats()
-{
+void printStats(int mode)
+{	
+	if(TRANSMITTER == mode){
 	printf("Resent packages: %d\n", dataStats.resent);
 	printf("Sent packages: %d\n", dataStats.sent);
 	printf("Timeouts: %d\n", dataStats.timeouts);
+	}
+	else if(RECEIVER == mode)
+	printf("Received packages: %d\n", dataStats.sent);
+
 	printf("Rejects: %d\n", dataStats.rej);
 }

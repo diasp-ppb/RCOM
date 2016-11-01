@@ -39,7 +39,7 @@ int main(int argc, char** argv){
         receiver();
 
     llclose(mode);
-    printStats();
+    printStats(mode);
     return 0;
 }
 
@@ -135,10 +135,10 @@ int receiver(){
     //receive START signal
     char *start = malloc(1);
     int startSize = llread(start, 0);
-    int size;
+    int fsize;
     char *name = malloc(1);
-    getFileInfo(start, startSize, &size, name);
-    printf("Start Read name: %s - size: %d \n", name, size);
+    getFileInfo(start, startSize, &fsize, name);
+   // printf("Start Read name: %s - size: %d \n", name, size);
 
 
     FILE *file = NULL;
@@ -152,14 +152,14 @@ int receiver(){
     int bytesRead = 0;
     char C = getSequenceNumber();
     char *buffer = malloc(TRAMA_SIZE);
-    while(bytesRead < size){
+    while(bytesRead < fsize){
       int size;
       while((size = llread(buffer, C)) <= 0) {} //TODO - change C
       size = getData(buffer, size);
       fwrite(buffer, 1, size, file);
       bytesRead += size;
       C ^= 1;
-      printf("total read: %d\n", bytesRead);
+      currentstatus( fsize , bytesRead); 
     }
     free(buffer);
 
@@ -168,8 +168,8 @@ int receiver(){
     char *end = malloc(1);
     int endSize = llread(end, 0);
     name = malloc(1);
-    getFileInfo(end, endSize, &size, name);
-    printf("End Read name: %s - size: %d \n", name, size);
+    getFileInfo(end, endSize, &fsize, name);
+    printf("\nEnd Read name: %s - size: %d \n", name, fsize);
     free(name);
 
 
@@ -276,7 +276,7 @@ int getFileInfo(char* buffer, int buffsize, int *size, char *name)
     int sizeLength = (int) buffer[2];
     if(buffer[1] == TSIZE)
     {
-        printf("sizeLength :%d\n", sizeLength);
+    //    printf("sizeLength :%d\n", sizeLength);
         int i;
         for(i = 0; i < sizeLength; i++)
         {
@@ -298,7 +298,7 @@ int getFileInfo(char* buffer, int buffsize, int *size, char *name)
         ++i;
         int nameLength = (int) buffer[i];
         ++i;
-        printf("nameLength: %d\n", nameLength);
+       // printf("nameLength: %d\n", nameLength);
         name = realloc(name, nameLength);
         int j;
         for(j = 0; j < nameLength; j++)
@@ -313,13 +313,13 @@ int getFileInfo(char* buffer, int buffsize, int *size, char *name)
 
 int getData(char *buffer, int size)
 {
-    int package = (unsigned int) buffer[1];
-    printf("package: %u\n", (unsigned char) package);
+   // int package = (unsigned int) buffer[1];
+   // printf("package: %u\n", (unsigned char) package);
 
     unsigned char l1 = (unsigned char) buffer[2];
     unsigned char l2 = (unsigned char) buffer[3];
     int length = (int) (256*l1 + l2);
-    printf("length: %x \n", length);
+   // printf("length: %x \n", length);
     char *copy = malloc(length);
 
     memcpy(copy, buffer + 4, length);

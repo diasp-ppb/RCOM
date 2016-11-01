@@ -104,4 +104,4 @@ int getPackageSize();
 int getSequenceNumber();
 
 void initStats();
-void printStats();
+void printStats(int mode);
