@@ -601,13 +601,10 @@ int getTrama(int fd, char* trama){
 	}
 
 	//VALIDATE
-	//printf("\ntrama received\n");
 	if((trama[1] ^ trama[2]) == trama[3]){
-		//printf("BCC1 CHECK: TRUE\n" );
 		return size;
 	}
 	else{
-		//printf("BCC1 CHECK: FALSE\n" );
 		return -1;
 	}
 

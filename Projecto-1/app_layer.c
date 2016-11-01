@@ -8,6 +8,8 @@ int mode ;
 int PACK_SIZE;
 int TRAMA_SIZE;
 
+unsigned int packNum = -1;
+
 int main(int argc, char** argv){
 
     int mode = 3;
@@ -82,14 +84,11 @@ int transmitter(char * filename){
       packCount ++;
       packCount %= 255;
 
-   //   printf("packCount %u\n",(unsigned char) (packCount -1 )  );
-   //   printf("%d\n", C);
 
       if(llwrite(data, res, C) == COMPLETE){
       bytesWritten += bytesRead;
 
       C ^= 1;
-     // printf("written: %d - total: %d\n", bytesRead, bytesWritten);
 
 
 	  currentstatus(  size , bytesWritten );
@@ -138,7 +137,6 @@ int receiver(){
     int fsize;
     char *name = malloc(1);
     getFileInfo(start, startSize, &fsize, name);
-   // printf("Start Read name: %s - size: %d \n", name, size);
 
 
     FILE *file = NULL;
@@ -156,10 +154,12 @@ int receiver(){
       int size;
       while((size = llread(buffer, C)) <= 0) {} //TODO - change C
       size = getData(buffer, size);
-      fwrite(buffer, 1, size, file);
-      bytesRead += size;
-      C ^= 1;
-      currentstatus( fsize , bytesRead); 
+	if (size != -1){
+            fwrite(buffer, 1, size, file);
+            bytesRead += size;
+            C ^= 1;
+            currentstatus( fsize , bytesRead);
+	} 
     }
     free(buffer);
 
@@ -250,8 +250,6 @@ int createDataPackage(char *buffer, int size,char packageID)
     buffer[2] = (unsigned char) (size / 256);
     buffer[3] = (unsigned char) (size % 256);
 
-
-   // printf("size %d  buffer3: %x\n",size, buffer[3]);
     memcpy(buffer+4, copy, size);
 
     free (copy);
@@ -276,7 +274,6 @@ int getFileInfo(char* buffer, int buffsize, int *size, char *name)
     int sizeLength = (int) buffer[2];
     if(buffer[1] == TSIZE)
     {
-    //    printf("sizeLength :%d\n", sizeLength);
         int i;
         for(i = 0; i < sizeLength; i++)
         {
@@ -298,7 +295,6 @@ int getFileInfo(char* buffer, int buffsize, int *size, char *name)
         ++i;
         int nameLength = (int) buffer[i];
         ++i;
-       // printf("nameLength: %d\n", nameLength);
         name = realloc(name, nameLength);
         int j;
         for(j = 0; j < nameLength; j++)
@@ -313,13 +309,13 @@ int getFileInfo(char* buffer, int buffsize, int *size, char *name)
 
 int getData(char *buffer, int size)
 {
-   // int package = (unsigned int) buffer[1];
-   // printf("package: %u\n", (unsigned char) package);
-
+    if ((int)buffer[1] != packNum +1)
+	return -1;
+    
+    packNum = (packNum + 1) % 255;
     unsigned char l1 = (unsigned char) buffer[2];
     unsigned char l2 = (unsigned char) buffer[3];
     int length = (int) (256*l1 + l2);
-   // printf("length: %x \n", length);
     char *copy = malloc(length);
 
     memcpy(copy, buffer + 4, length);
