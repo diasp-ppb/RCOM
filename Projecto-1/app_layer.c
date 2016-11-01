@@ -78,20 +78,13 @@ int transmitter(char * filename){
       int res = fread(data, 1, PACK_SIZE, file);
       int bytesRead = res;
 
-    //  int i;
-  /*    for(i = 0; i < res ; i ++){
-        printf("%d - %x\n",i, data[i]);
-      }
-*/
       res =  createDataPackage(data, res, packCount);
       packCount ++;
       packCount %= 255;
 
       printf("packCount %u\n",(unsigned char) (packCount -1 )  );
       printf("%d\n", C);
-    /*  for(i = 0; i < res ; i ++){
-        printf("%d - %x\n",i, data[i]);
-      }*/
+
       if(llwrite(data, res, C) == COMPLETE){
       bytesWritten += bytesRead;
 
@@ -150,12 +143,6 @@ int receiver(){
     if(openFile(&file, name, "w+") != 0)
       printf("opened file\n");
 
-
-  /*  if(createFile(file, name) != 0)
-    {
-      printf("error creating file\n");
-      return 1;
-    }*/
     free(name);
 
 
@@ -247,10 +234,6 @@ int createStartEndPackage(int type, char* filename, int size, char* package)
     for(j = 0; j < nameLength; i++, j++)
     package[i] = filename[j];
 
-  //      for(i = 0; i < packSize; i++)
-  //  printf("%d - %x \n", i, package[i]);
-/*
-    getFileInfo(package, packSize, NULL, NULL);*/
 
     return packSize;
 }
@@ -270,11 +253,7 @@ int createDataPackage(char *buffer, int size,char packageID)
 
     printf("size %d  buffer3: %x\n",size, buffer[3]);
     memcpy(buffer+4, copy, size);
-/*    int i;
-    for(i = 0; i < length; i++)
-        printf("%d - %x\n", i, buffer[i]);
 
-    getData(buffer, length);*/
     free (copy);
     return length;
 }
@@ -309,7 +288,6 @@ int getFileInfo(char* buffer, int buffsize, int *size, char *name)
             fsize += curr;
         }
         *size = fsize;
-      //  printf("size: %d\n", fsize);
     }
     else
         return 1;
@@ -327,7 +305,6 @@ int getFileInfo(char* buffer, int buffsize, int *size, char *name)
           name[j] = buffer[i + j];
         name[j]='\0';
 
-    //    printf("name: %s\n", name);
     }
     else
         return 1;

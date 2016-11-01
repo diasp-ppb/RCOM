@@ -1,3 +1,5 @@
+
+
 #include "datalink.h"
 volatile int flag=1, conta=1;
 struct datalinkINFO dataINFO;
@@ -18,7 +20,6 @@ void installAlarm(){
 }
 
 
-//TODO: ver argumento porta pwp18
 int llopen(char *port, int flag)
 {
 	openPort(port);
@@ -43,11 +44,7 @@ int llclose(int flag)
 
 
 int llwrite(char *buffer, int length, int C){
-/*	int i;
-	printf("llwrite buffer : size:%d \n",length);
-	for(i = 0; i < length ; i ++){
-		printf("%d - %x\n",i, buffer[i]);
-	}*/
+
 	conta = 0;
 
 
@@ -60,21 +57,12 @@ int llwrite(char *buffer, int length, int C){
 	char bcc2 = makeBCC2(buffer, length);
 	copy[length] = bcc2;
 
-	/*for(i = 0; i < length + 1 ; i ++){
-		printf("%d - %x - %c\n",i, copy[i], copy[i]);
-	}*/
 	int size = stuffing(copy, length + 1);
 
 
 
 	size = packagePayLoad(C, size, copy);
 
-
-
-	//printf("llwrite trama I : length: %d -  size:%d \n", length, size);
-/*	for(i = 0; i < size ; i ++){
-		printf("%d - %x - %c\n",i, copy[i], copy[i]);
-	}*/
 
 	int noResponse = 1;
 	char ch;
@@ -92,7 +80,6 @@ int llwrite(char *buffer, int length, int C){
 
 		noResponse = receiveSupervision(fd,&ch);
 		unsigned char cha = (unsigned char) ch;
-	//	printf("cha %x C %d\n", cha ,C);
 
 		if(noResponse == COMPLETE && (cha == C_RR0 || cha == C_RR1 || cha == C_REJ0 || cha == C_REJ1)){
 			status = checkRR_Reject(C, cha);
@@ -131,11 +118,7 @@ int llread(char *buffer, int C){
 	printf("package extracted:size %d \n",size);
 
 	size = deStuffing(package, size);
-/*
-	int i;
-	for(i = 0; i < size;i++){
-		printf("p: %x \n",(unsigned char) package[i]);
-	}*/
+
 
 	char bcc = makeBCC2( package, size-1);
 
@@ -166,14 +149,10 @@ int llread(char *buffer, int C){
 
 	size -= 1; //removes bcc2;
 
-	//buffer = realloc(buffer, size);
 	memcpy(buffer, package,size);
 
 	free(package);
-/*
-	for(i = 0; i < size; i++){
-		printf("%d - %x - %c \n", i, buffer[i], buffer[i]);
-	}*/
+
 	return size;
 }
 
@@ -205,7 +184,7 @@ int llopenTransmitter(int fd)
 
 int llopenReceiver(int fd)
 {
-	flag = 0; //To dont break processing package loop //TODO WUT???
+	flag = 0; //To dont break processing package loop 
 	char C;
 	printf("waiting for start pack\n");
 	if(receiveSupervision(fd,&C) == COMPLETE) // TODO meter as flags
@@ -234,7 +213,7 @@ int llcloseTransmitter(int fd)
 	}
 
 	if(conta < dataConfig.numTransmissions){
-		createAndSendPackage(fd,UA_PACK);//TODO NEED FIX SHOULD ONLY SEND ONCE
+		createAndSendPackage(fd,UA_PACK);
 		printf("connection closed sucessfully\n");
 		return 0;
 	}
@@ -341,23 +320,19 @@ int receiveSupervision(int fd,char * C)
 			status = receiveFlag(fd);
 			if(status == FLAG_RCV)
 			status = COMPLETE;
-			//printf("full package!\n");}
 			break;
 		}
 
 	}while(status != COMPLETE && flag == 0);
-	//printf("Flag %d \n",flag);
-	//printf("status %d \n",status);
+	
 	return status;
 }
 
 int receiveFlag(int fd)
 {
-	//printf("antes FLAG \n");
 	char ch;
 	read(fd, &ch, 1);
 
-	//printf("Flag value: %x \n",ch);
 	if(ch == F_FLAG)
 	return FLAG_RCV;
 	else
@@ -368,7 +343,6 @@ int receiveA(int fd, char* ch)
 {
 	int res;
 	res = read(fd, ch, 1);
-	//printf("readA %x \n",*ch);
 	if(res <= 0)
 	return START;
 	else if(*ch == F_FLAG)
@@ -380,7 +354,6 @@ int receiveC(int fd, char* ch)
 {
 	int res;
 	res = read(fd, ch, 1);
-	//printf("receiveC %x \n", (unsigned char)*ch);
 	if(res <= 0)
 	return START;
 	else if(*ch == F_FLAG)
@@ -543,11 +516,7 @@ int packagePayLoad(int C, int size, char * payload){
 	memcpy(payload, buffer, tramaSize);
 
 	free(buffer);
-	/*
-	printf("TRAMA I size:%d\n",tramaSize);
-	for(i = 0; i < size +4 ; i++){
-	printf("t%d:%x\n",i,payload[i]);
-}*/
+
 
 return tramaSize;
 }
@@ -557,9 +526,6 @@ int sendMensage(int fd, char *message, int length)
 	int res  = 0;
 	while(res <= 0){
 		res=write(fd, message, length);
-	/*	int i;
-		for(i = 0; i < length  ; i++)
-		printf("t%d:%x\n",i,message[i]);*/
 	}
 	return res;
 }
@@ -574,12 +540,6 @@ int checkRR_Reject(int C, unsigned char ch){
 int extractPackage(char *package, char *trama,int length){
 	// 5 is from F A C1 BBC1 |--| F
 	int packageSize = length - 5;
-
-
-	/*int i;
-	for(i = 0; i < packageSize; i++)
-		printf("i: %d - %x\n", i, package[i]);*/
-
 
 	return packageSize;
 }
@@ -607,7 +567,6 @@ int getTrama(int fd, char* trama){
 	while(flags < 2){
 		res = read(fd,&ch,1);
 		if( res > 0){
-	//		printf("package cell -- ");
 			if(ch == F_FLAG){
 				if(size == 1)
 					continue;
@@ -625,8 +584,6 @@ int getTrama(int fd, char* trama){
 		}
 
 	}
-
-	//trama = realloc(trama, size);
 
 	//VALIDATE
 	printf("\ntrama received\n");
