@@ -11,7 +11,7 @@ int TRAMA_SIZE;
 
 void atende()                   // atende alarme
 {
-	printf("alarme # %d\n", conta);
+	//printf("alarme # %d\n", conta);
 	flag=1;
 	dataStats.timeouts++;
 	dataStats.resent++;

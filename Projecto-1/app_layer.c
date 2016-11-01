@@ -8,7 +8,7 @@ int mode ;
 int PACK_SIZE;
 int TRAMA_SIZE;
 
-unsigned int packNum = -1;
+unsigned char packNum = 0;
 
 int main(int argc, char** argv){
 
@@ -253,9 +253,8 @@ int createDataPackage(char *buffer, int size,char packageID)
     char * copy = malloc(size);
     memcpy(copy, buffer, size);
     buffer = realloc(buffer, length);
-
     buffer[0] = DATA_PACK;
-    buffer[1] = packageID; //TODO - what is N?
+    buffer[1] = (unsigned char) packageID; //TODO - what is N?
     buffer[2] = (unsigned char) (size / 256);
     buffer[3] = (unsigned char) (size % 256);
 
@@ -322,10 +321,12 @@ int getData(char *buffer, int size)
 {
     if(buffer[0] != DATA_PACK)
 	return -1;
-    if ((int)buffer[1] != packNum +1)
+
+    if ((unsigned char)buffer[1] != packNum)
 	return -1;
     
     packNum = (packNum + 1) % 255;
+
     unsigned char l1 = (unsigned char) buffer[2];
     unsigned char l2 = (unsigned char) buffer[3];
     int length = (int) (256*l1 + l2);
