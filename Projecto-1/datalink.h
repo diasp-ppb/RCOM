@@ -39,7 +39,6 @@
 #define START_PACK 2
 #define END_PACK 3
 
-#define TRAMA_SIZE 300
 
 struct datalinkINFO{
   int fd;
@@ -93,3 +92,6 @@ int openPort(char * port);
 int closePort();
 
 int readConfig();
+
+int getPackageSize();
+int getSequenceNumber();

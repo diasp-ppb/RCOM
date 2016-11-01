@@ -3,6 +3,8 @@ volatile int flag=1, conta=1;
 struct datalinkINFO dataINFO;
 struct datalinkConfig dataConfig;
 
+int TRAMA_SIZE;
+
 void atende()                   // atende alarme
 {
 	printf("alarme # %d\n", conta);
@@ -779,8 +781,19 @@ int readConfig(){
 	break;
    }
 
+   TRAMA_SIZE = dataConfig.packageSize * 2;
    
    free(line);
    fclose(file);
    return 0;
+}
+
+int getPackageSize()
+{
+   return dataConfig.packageSize;
+}
+
+int getSequenceNumber()
+{
+   return dataConfig.sequenceNumber;
 }

@@ -9,7 +9,6 @@
 #define TSIZE 0
 #define TNAME 1
 
-#define PACKSIZE 256
 
 /**
  Open File

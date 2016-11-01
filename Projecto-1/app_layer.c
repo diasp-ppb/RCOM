@@ -3,7 +3,10 @@
 #define RECEIVER_MODE "w"
 #define TRANSMITTER_MODE "r"
 
+
 int mode ;
+int PACK_SIZE;
+int TRAMA_SIZE;
 
 int main(int argc, char** argv){
     int mode = 3;
@@ -51,6 +54,8 @@ int transmitter(char * filename){
     unsigned long size = getFileSize(file);
     int bytesWritten = 0;
 
+    PACK_SIZE = getPackageSize();
+    TRAMA_SIZE = PACK_SIZE * 2;
 
     int packSize;
     //START signal
@@ -65,12 +70,12 @@ int transmitter(char * filename){
     free(start);
 
     //SEND File
-    char *data = malloc(PACKSIZE);
-    char C = 1;
+    char *data = malloc(PACK_SIZE);
+    char C = getSequenceNumber();
     char packCount = 0;
     while(bytesWritten < size)
     {
-      int res = fread(data, 1, PACKSIZE, file);
+      int res = fread(data, 1, PACK_SIZE, file);
       int bytesRead = res;
 
     //  int i;
@@ -156,7 +161,7 @@ int receiver(){
 
     //receive and save  File
     int bytesRead = 0;
-    char C = 1;
+    char C = getSequenceNumber();
     char *buffer = malloc(TRAMA_SIZE);
     while(bytesRead < size){
       int size;
