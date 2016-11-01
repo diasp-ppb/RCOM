@@ -45,6 +45,7 @@ int llwrite(char *buffer, int length, int C){
 	for(i = 0; i < length ; i ++){
 		printf("%d - %x\n",i, buffer[i]);
 	}*/
+	conta = 0;
 
 
 	int fd = dataINFO.fd;
@@ -78,19 +79,26 @@ int llwrite(char *buffer, int length, int C){
 	flag = 1;
 	conta = 0;
 
-	while(conta < 4  && noResponse != COMPLETE){
+	while(conta < 4  && status != COMPLETE){
 		if(flag){
 			alarm(3);
 			flag=0;
 			sendMensage(fd,copy,size);
+			printf("sendMensage! \n");
 		}
 
 		noResponse = receiveSupervision(fd,&ch);
 		unsigned char cha = (unsigned char) ch;
+	//	printf("cha %x C %d\n", cha ,C);
+
 		if(noResponse == COMPLETE && (cha == C_RR0 || cha == C_RR1 || cha == C_REJ0 || cha == C_REJ1)){
 			status = checkRR_Reject(C, cha);
+			printf("status %d\n", status);
 		}
 	}
+
+	conta =  0;
+	alarm(0);
 
 	free(copy);
 	return status;
@@ -112,7 +120,7 @@ int llread(char *buffer, int C){
 
 	printf("package Valid size, %d\n",size);
 
-
+	int Ctrama = trama[2];
 	size -= 5;
 	char *package = malloc(TRAMA_SIZE);
 	memmove(package, trama + 4, size);
@@ -131,10 +139,15 @@ int llread(char *buffer, int C){
 	if(bcc == package[size - 1])
 	{
 		printf("BCC2 check: %d\n", C);
-		if(C == 1)
+		if(Ctrama == 1)
 		createAndSendPackage(fd, RR_0PACK);
-		else if (C == 0)
+		else if (Ctrama == 0)
 		createAndSendPackage(fd, RR_1PACK);
+
+		if(C != Ctrama){
+			printf("pacote repetido\n");
+			return -1;
+		}
 
 	}
 	else
@@ -543,7 +556,9 @@ int sendMensage(int fd, char *message, int length)
 	int res  = 0;
 	while(res <= 0){
 		res=write(fd, message, length);
-		//printf("sending... %d\n", res);
+	/*	int i;
+		for(i = 0; i < length  ; i++)
+		printf("t%d:%x\n",i,message[i]);*/
 	}
 	return res;
 }
@@ -579,12 +594,25 @@ int getTrama(int fd, char* trama){
 	char ch;
 	int res;
 	printf("getting trama\n");
+
+	while(flags <1){
+		res = read(fd, &ch, 1);
+		if(ch == F_FLAG && res > 0){
+			flags++;
+			size++;
+			trama[size - 1] = ch;
+		}
+	}
 	while(flags < 2){
 		res = read(fd,&ch,1);
 		if( res > 0){
 	//		printf("package cell -- ");
-			if(ch == F_FLAG)
-			flags++;
+			if(ch == F_FLAG){
+				if(size == 1)
+					continue;
+				flags++;
+			}
+
 
 			size++;
 			if(size > multi*TRAMA_SIZE)
@@ -597,7 +625,7 @@ int getTrama(int fd, char* trama){
 
 	}
 
-	trama = realloc(trama, size);
+	//trama = realloc(trama, size);
 
 	//VALIDATE
 	printf("\ntrama received\n");

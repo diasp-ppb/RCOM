@@ -23,7 +23,7 @@ int openFile(FILE ** file ,char * filename, char * mode);
 */
 unsigned long getFileSize(FILE * file);
 
-int createDataPackage(char *buffer, int size);
+int createDataPackage(char *buffer, int size,char packageID);
 
 int transmitter(char * filename);
 int receiver();

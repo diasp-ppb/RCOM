@@ -60,6 +60,7 @@ int transmitter(char * filename){
     //SEND File
     char *data = malloc(PACKSIZE);
     char C = 1;
+    char packCount = 0;
     while(bytesWritten < size)
     {
       int res = fread(data, 1, PACKSIZE, file);
@@ -70,17 +71,29 @@ int transmitter(char * filename){
         printf("%d - %x\n",i, data[i]);
       }
 */
-      res =  createDataPackage(data, res);
+      res =  createDataPackage(data, res, packCount);
+      packCount ++;
+      packCount %= 255;
 
-
+      printf("packCount %u\n",(unsigned char) (packCount -1 )  );
+      printf("%d\n", C);
     /*  for(i = 0; i < res ; i ++){
         printf("%d - %x\n",i, data[i]);
       }*/
-      while(llwrite(data, res, C) != COMPLETE){}
+      if(llwrite(data, res, C) == COMPLETE){
       bytesWritten += bytesRead;
+
       C ^= 1;
       printf("written: %d - total: %d\n", bytesRead, bytesWritten);
+
+    }else{
+     printf("CONECTION LOST\n");
+     free(data);
+     exit(1);
     }
+
+  }
+
 
     free(data);
 
@@ -134,15 +147,12 @@ int receiver(){
     char *buffer = malloc(PACKSIZE);
     while(bytesRead < size){
       int size;
-      size = llread(buffer, C); //TODO - change C
+      while((size = llread(buffer, C)) <= 0) {} //TODO - change C
       size = getData(buffer, size);
-      if(size > 0)
-      {
-        fwrite(buffer, 1, size, file);
-        bytesRead += size;
-        C ^= 1;
-        printf("total read: %d\n", bytesRead);
-      }
+      fwrite(buffer, 1, size, file);
+      bytesRead += size;
+      C ^= 1;
+      printf("total read: %d\n", bytesRead);
     }
     free(buffer);
 
@@ -227,7 +237,7 @@ int createStartEndPackage(int type, char* filename, int size, char* package)
     return packSize;
 }
 
-int createDataPackage(char *buffer, int size)
+int createDataPackage(char *buffer, int size,char packageID)
 {
     int length = size + 4;
     char * copy = malloc(size);
@@ -235,10 +245,12 @@ int createDataPackage(char *buffer, int size)
     buffer = realloc(buffer, length);
 
     buffer[0] = DATA_PACK;
-    buffer[1] = 0; //TODO - what is N?
+    buffer[1] = packageID; //TODO - what is N?
     buffer[2] = (unsigned char) (size / 256);
     buffer[3] = (unsigned char) (size % 256);
 
+
+    printf("size %d  buffer3: %x\n",size, buffer[3]);
     memcpy(buffer+4, copy, size);
 /*    int i;
     for(i = 0; i < length; i++)
@@ -306,6 +318,9 @@ int getFileInfo(char* buffer, int buffsize, int *size, char *name)
 
 int getData(char *buffer, int size)
 {
+    int package = (unsigned int) buffer[1];
+    printf("package: %u\n", (unsigned char) package);
+
     int length = buffer[2] * 256 + buffer[3];
 
     char *copy = malloc(length);
