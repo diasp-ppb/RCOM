@@ -166,6 +166,9 @@ int receiver(){
     }
     free(buffer);
 
+    if(bytesRead != fsize)
+	printf("Received wrong number of bytes\n");
+
 
     //receive END signal
     char *end = malloc(1);

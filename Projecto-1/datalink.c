@@ -80,8 +80,6 @@ int llwrite(char *buffer, int length, int C){
 			flag=0;
 			sendMensage(fd,copy,size);
 			dataStats.sent++;
-			//if(conta != 0)
-			//dataStats.resent++;
 		}
 
 		noResponse = receiveSupervision(fd,&ch);
@@ -94,7 +92,7 @@ int llwrite(char *buffer, int length, int C){
 				dataStats.rej++;
 				dataStats.resent++;
 				flag = 1;
-				printf("Recebeu reject\n");
+				printf("  REJ Received\n");
 				alarm(0);
 			}
 		}
@@ -113,7 +111,6 @@ int llread(char *buffer, int C){
 	int size  = getTrama(fd, trama);
 	if(size < 5)
 	{
-		//	printf("Wrong trama: size: %d\n",size);
 		if(C == 1)
 		createAndSendPackage(fd, REJ_1PACK);
 		else if(C == 0)
@@ -121,14 +118,12 @@ int llread(char *buffer, int C){
 		return -1;
 	}
 
-	//printf("package Valid size, %d\n",size);
 
 	int Ctrama = trama[2];
 	size -= 5;
 	char *package = malloc(TRAMA_SIZE);
 
 	memmove(package, trama + 4, size);
-//	printf("package extracted:size %d \n",size);
 
 	size = deStuffing(package, size);
 
@@ -137,14 +132,12 @@ int llread(char *buffer, int C){
 
 	if(bcc == package[size - 1])
 	{
-		//printf("BCC2 check: %d\n", C);
 		if(Ctrama == 1)
 		createAndSendPackage(fd, RR_0PACK);
 		else if (Ctrama == 0)
 		createAndSendPackage(fd, RR_1PACK);
 
 		if(C != Ctrama){
-		//	printf("pacote repetido\n");
 			return -1;
 		}
 	}
@@ -199,10 +192,10 @@ int llopenTransmitter(int fd)
 
 int llopenReceiver(int fd)
 {
-	flag = 0; //To dont break processing package loop
+	flag = 0; //Avoid breaking package loop
 	char C;
-	//printf("waiting for start pack\n");
-	if(receiveSupervision(fd,&C) == COMPLETE) // TODO meter as flags
+
+	if(receiveSupervision(fd,&C) == COMPLETE) 
 		createAndSendPackage(fd,UA_PACK);
 	printf("connection opened successfuly\n");
 	return 0;
@@ -569,7 +562,6 @@ int getTrama(int fd, char* trama){
 
 	char ch;
 	int res;
-	//printf("getting trama\n");
 
 	while(flags <1){
 		res = read(fd, &ch, 1);
