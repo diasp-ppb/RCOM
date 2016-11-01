@@ -136,7 +136,10 @@ int receiver(){
     int startSize = llread(start, 0);
     int fsize;
     char *name = malloc(1);
-    getFileInfo(start, startSize, &fsize, name);
+    if( getFileInfo(start, startSize, &fsize, name) == -1){
+	printf("Error reading start package\n");
+	exit(1);
+    }
 
 
     FILE *file = NULL;
@@ -168,7 +171,10 @@ int receiver(){
     char *end = malloc(1);
     int endSize = llread(end, 0);
     name = malloc(1);
-    getFileInfo(end, endSize, &fsize, name);
+    if(getFileInfo(end, endSize, &fsize, name) == -1){
+	printf("Error reading end package\n");
+	exit(1);
+    }
     printf("\nEnd Read name: %s - size: %d \n", name, fsize);
     free(name);
 
@@ -270,6 +276,8 @@ int calculateNumBytes(int num)
 
 int getFileInfo(char* buffer, int buffsize, int *size, char *name)
 {
+    if(buffer[0] != START_PACK && buffer[0] != END_PACK)
+	return -1;
     int fsize = 0;
     int sizeLength = (int) buffer[2];
     if(buffer[1] == TSIZE)
@@ -309,6 +317,8 @@ int getFileInfo(char* buffer, int buffsize, int *size, char *name)
 
 int getData(char *buffer, int size)
 {
+    if(buffer[0] != DATA_PACK)
+	return -1;
     if ((int)buffer[1] != packNum +1)
 	return -1;
     
