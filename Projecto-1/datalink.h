@@ -55,6 +55,13 @@ struct datalinkConfig{
   unsigned int packageSize;
 };
 
+struct datalinkStats{
+  unsigned int resent;
+  unsigned int sent;
+  unsigned int timeouts;
+  unsigned int rej;
+};
+
 char * createSet();
 int sendMensage(int fd, char *message, int length);
 int createAndSendPackage(int fd, int type);
@@ -95,3 +102,6 @@ int readConfig();
 
 int getPackageSize();
 int getSequenceNumber();
+
+void initStats();
+void printStats();

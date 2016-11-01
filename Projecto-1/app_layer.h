@@ -32,3 +32,6 @@ int calculateNumBytes(int num);
 
 int getFileInfo(char* buffer, int buffsize, int *size, char *name);
 int getData(char *buffer, int size);
+
+
+void currentstatus( int filesize , int readed );

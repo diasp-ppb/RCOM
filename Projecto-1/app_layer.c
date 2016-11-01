@@ -9,6 +9,7 @@ int PACK_SIZE;
 int TRAMA_SIZE;
 
 int main(int argc, char** argv){
+
     int mode = 3;
     if( argc == 3 && (strcmp("RECEIVER",argv[2]) == 0))
         mode = RECEIVER;
@@ -38,13 +39,12 @@ int main(int argc, char** argv){
         receiver();
 
     llclose(mode);
-
+    printStats();
     return 0;
 }
 
 int transmitter(char * filename){
     //TRANSMITTER
-    printf("%s\n", filename);
     //OPEN FILE
     FILE *file = NULL ;
 
@@ -82,15 +82,17 @@ int transmitter(char * filename){
       packCount ++;
       packCount %= 255;
 
-      printf("packCount %u\n",(unsigned char) (packCount -1 )  );
-      printf("%d\n", C);
+   //   printf("packCount %u\n",(unsigned char) (packCount -1 )  );
+   //   printf("%d\n", C);
 
       if(llwrite(data, res, C) == COMPLETE){
       bytesWritten += bytesRead;
 
       C ^= 1;
-      printf("written: %d - total: %d\n", bytesRead, bytesWritten);
+     // printf("written: %d - total: %d\n", bytesRead, bytesWritten);
 
+
+	  currentstatus(  size , bytesWritten );
     }else{
      printf("CONECTION LOST\n");
      free(data);
@@ -98,6 +100,7 @@ int transmitter(char * filename){
     }
 
   }
+	printf("\n");
 
 
     free(data);
@@ -105,7 +108,6 @@ int transmitter(char * filename){
 
     //END signal
     char *end = malloc(1);
-    sleep(2);
     packSize = createStartEndPackage(END_PACK, filename, size, end);
     if(llwrite(end, packSize, 0) != COMPLETE)
     {
@@ -184,9 +186,7 @@ int openFile(FILE ** file ,char * filename, char * mode){
         printf("File doesn't exist! \n");
         return -1;
     }
-    if(*file != NULL)
-    printf("FILE EXIST\n" );
-    return 0;
+   	return 0;
 }
 
 unsigned long getFileSize(FILE * file){
@@ -251,7 +251,7 @@ int createDataPackage(char *buffer, int size,char packageID)
     buffer[3] = (unsigned char) (size % 256);
 
 
-    printf("size %d  buffer3: %x\n",size, buffer[3]);
+   // printf("size %d  buffer3: %x\n",size, buffer[3]);
     memcpy(buffer+4, copy, size);
 
     free (copy);
@@ -312,7 +312,7 @@ int getFileInfo(char* buffer, int buffsize, int *size, char *name)
 }
 
 int getData(char *buffer, int size)
-{	
+{
     int package = (unsigned int) buffer[1];
     printf("package: %u\n", (unsigned char) package);
 
@@ -327,4 +327,23 @@ int getData(char *buffer, int size)
 
     free(copy);
     return length;
+}
+
+void currentstatus( int filesize , int readed ) {
+	printf("]\n\033[F\033[J");
+	float perc = ((float)readed / filesize) * 100;
+
+	printf("|");
+
+	float t;
+	for(t = 0; t < perc; t+= 3) {
+		printf("=");
+	}
+
+
+	for(t = 100 - t; t > 0; t -= 3) {
+		printf(" ");
+	}
+
+	printf("|  %.2f %%", perc);
 }

@@ -1,16 +1,20 @@
-
-
 #include "datalink.h"
+
 volatile int flag=1, conta=1;
+
 struct datalinkINFO dataINFO;
 struct datalinkConfig dataConfig;
+struct datalinkStats dataStats;
 
 int TRAMA_SIZE;
 
+
 void atende()                   // atende alarme
 {
-	printf("alarme # %d\n", conta);
+//	printf("alarme # %d\n", conta);
 	flag=1;
+	dataStats.resent++;
+	dataStats.timeouts++;
 	conta++;
 }
 
@@ -23,6 +27,7 @@ void installAlarm(){
 int llopen(char *port, int flag)
 {
 	openPort(port);
+	initStats();
 	int status = 1;
 	if(flag == TRANSMITTER)
 		status = llopenTransmitter(dataINFO.fd);
@@ -46,7 +51,6 @@ int llclose(int flag)
 int llwrite(char *buffer, int length, int C){
 
 	conta = 0;
-
 
 	int fd = dataINFO.fd;
 
@@ -75,7 +79,7 @@ int llwrite(char *buffer, int length, int C){
 			alarm(dataConfig.timeout);
 			flag=0;
 			sendMensage(fd,copy,size);
-			printf("sendMensage! \n");
+			dataStats.sent++;
 		}
 
 		noResponse = receiveSupervision(fd,&ch);
@@ -83,11 +87,13 @@ int llwrite(char *buffer, int length, int C){
 
 		if(noResponse == COMPLETE && (cha == C_RR0 || cha == C_RR1 || cha == C_REJ0 || cha == C_REJ1)){
 			status = checkRR_Reject(C, cha);
-			printf("status %d\n", status);
+			if(cha == C_REJ0 || cha == C_REJ1)
+				dataStats.rej++;
+
 		}
 	}
 
-	conta =  0;
+	conta = 0;
 	alarm(0);
 
 	free(copy);
@@ -100,7 +106,7 @@ int llread(char *buffer, int C){
 	int size  = getTrama(fd, trama);
 	if(size < 5)
 	{
-		printf("Wrong trama: size: %d\n",size);
+		//	printf("Wrong trama: size: %d\n",size);
 		if(C == 1)
 		createAndSendPackage(fd, REJ_1PACK);
 		else if(C == 0)
@@ -108,14 +114,14 @@ int llread(char *buffer, int C){
 		return -1;
 	}
 
-	printf("package Valid size, %d\n",size);
+	//printf("package Valid size, %d\n",size);
 
 	int Ctrama = trama[2];
 	size -= 5;
 	char *package = malloc(TRAMA_SIZE);
 
 	memmove(package, trama + 4, size);
-	printf("package extracted:size %d \n",size);
+//	printf("package extracted:size %d \n",size);
 
 	size = deStuffing(package, size);
 
@@ -124,21 +130,21 @@ int llread(char *buffer, int C){
 
 	if(bcc == package[size - 1])
 	{
-		printf("BCC2 check: %d\n", C);
+		//printf("BCC2 check: %d\n", C);
 		if(Ctrama == 1)
 		createAndSendPackage(fd, RR_0PACK);
 		else if (Ctrama == 0)
 		createAndSendPackage(fd, RR_1PACK);
 
 		if(C != Ctrama){
-			printf("pacote repetido\n");
+		//	printf("pacote repetido\n");
 			return -1;
 		}
 
 	}
 	else
 	{
-		printf("BCC2 fail\n");
+		//printf("BCC2 fail\n");
 		if(C == 1)
 		createAndSendPackage(fd, REJ_1PACK);
 		else if (C == 0)
@@ -184,7 +190,7 @@ int llopenTransmitter(int fd)
 
 int llopenReceiver(int fd)
 {
-	flag = 0; //To dont break processing package loop 
+	flag = 0; //To dont break processing package loop
 	char C;
 	printf("waiting for start pack\n");
 	if(receiveSupervision(fd,&C) == COMPLETE) // TODO meter as flags
@@ -324,7 +330,7 @@ int receiveSupervision(int fd,char * C)
 		}
 
 	}while(status != COMPLETE && flag == 0);
-	
+
 	return status;
 }
 
@@ -693,14 +699,14 @@ int readConfig(){
    if(getline(&line, &length, file) == -1){
 	printf("failed to read packageSize\n");
 	exit(1);
-   } 
+   }
    dataConfig.packageSize = strtol(line, NULL, 10);
    if(dataConfig.packageSize < 1){
 	printf("invalid packageSize, applying packageSize 128\n");
   	dataConfig.packageSize = 128;
    }
-	
-   
+
+
    switch(dataConfig.baudrate){
 	case(300):
 	dataConfig.baudrate = B300;
@@ -739,7 +745,7 @@ int readConfig(){
    }
 
    TRAMA_SIZE = dataConfig.packageSize * 2;
-   
+
    free(line);
    fclose(file);
    return 0;
@@ -753,4 +759,20 @@ int getPackageSize()
 int getSequenceNumber()
 {
    return dataConfig.sequenceNumber;
+}
+
+void initStats()
+{
+	dataStats.resent = 0;
+  dataStats.sent = 0;
+  dataStats.timeouts = 0;
+  dataStats.rej = 0;
+}
+
+void printStats()
+{
+	printf("Resent packages: %d\n", dataStats.resent);
+	printf("Sent packages: %d\n", dataStats.sent);
+	printf("Timeouts: %d\n", dataStats.timeouts);
+	printf("Rejects: %d\n", dataStats.rej);
 }
