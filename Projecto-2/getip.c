@@ -8,13 +8,8 @@
 #include <arpa/inet.h>
 
 
-int main(int argc, char *argv[]) {
+int getIP(char *link, char *ip) {
   struct hostent *h;
-
-  if (argc != 2) {
-    fprintf(stderr, "usage: getip address\n");
-    exit(1);
-  }
 
   /*
   struct hostent {
@@ -31,13 +26,15 @@ int main(int argc, char *argv[]) {
 
   #define h_addr h_addr_list[0]	The first address in h_addr_list.
   */
-  if ((h = gethostbyname(argv[1])) == NULL) {
+  if ((h = gethostbyname(link)) == NULL) {
     herror("gethostbyname");
     exit(1);
   }
 
-  printf("Host name  : %s\n", h->h_name);
-  printf("IP Address : %s\n", inet_ntoa(*((struct in_addr *)h->h_addr)));
-
+ // printf("Host name  : %s\n", h->h_name);
+ // printf("IP Address : %s\n", inet_ntoa(*((struct in_addr *)h->h_addr)));
+  char *tmpIP;
+  tmpIP = inet_ntoa(*((struct in_addr *)h->h_addr));
+  strcpy(ip, tmpIP);
   return 0;
 }
