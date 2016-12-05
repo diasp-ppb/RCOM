@@ -31,6 +31,37 @@ static int connectSocket(const char * IP,int PORT){
 }
 
 
+
+int validURL(char * url,unsigned int size){
+
+regex_t regularExpression;
+
+
+int retReg = regcomp(&regularExpression,"ftp://([a-zA-Z0-9])*:([a-zA-Z0-9])*+@+[a-zA-Z0-9]*+/+[a-zA-Z0-9._~@]*",REG_EXTENDED);
+
+if(retReg != 0){
+  printf("Fail: Couldnt compile regular expression\n");
+  return 1;
+}
+
+int result;
+if(!(result = regexec(&regularExpression,url,0,NULL,0))){
+return 0;
+}
+else if(result = REG_NOMATCH){
+  printf("Fail: Invalid URL \n");
+  return 1;
+}
+else{
+  printf("Fail: Cant validate URL\n");
+  return 1;
+}
+
+return 0;
+}
+
+
+
 int FTPdownload(char * filename, ftp *ftp){
     FILE * file;
 
@@ -145,6 +176,7 @@ int main(int argc, char** argv)
     free(ip);
 
     connectSocket(ip, 21);
+
 
     return 0;
 }

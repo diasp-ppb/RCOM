@@ -8,6 +8,7 @@
 #include <signal.h>
 #include <netdb.h>
 #include <string.h>
+#include <regex.h>
 
 
 typedef struct ftp {
