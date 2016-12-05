@@ -12,4 +12,12 @@
 #include <strings.h>
 
 
+typedef struct ftp {
+  int fd_socket; // o file descriptor do control socket
+  int fd_data; // o  file descriptor do data socket
+} ftp;
+
+
+
 static int connectSocket(const char * IP,int PORT);
+int FTPdownload(char * filename, ftp *ftp);
