@@ -20,13 +20,12 @@ static int connectSocket(const char *IP, int PORT) {
   }
 
   /*connect to the server*/
-  if (connect(sockfd, (struct sockaddr *)&server_addr, sizeof(server_addr)) <
-      0) {
+  if (connect(sockfd, (struct sockaddr *)&server_addr, sizeof(server_addr)) <0) {
     perror("connect()");
     exit(0);
   }
 
-  return 0;
+  return sockfd;
 }
 
 int validURL(char *url, unsigned int size) {
@@ -46,7 +45,7 @@ int validURL(char *url, unsigned int size) {
   int result;
   if (!(result = regexec(&regularExpression, url, 0, NULL, 0))) {
     return 0;
-  } else if (result = REG_NOMATCH) {
+  } else if (result == REG_NOMATCH) {
     printf("Fail: Invalid URL \n");
     return 1;
   } else {
@@ -98,7 +97,7 @@ int FTPconnect(ftp *FTP, char *ip, int port) {
 
   int socket_fd;
 
-  if ((socket_fd = connectSocket(ip, port)) != 0) {
+  if ((socket_fd = connectSocket(ip, port)) < 0) {
     printf("Fail: Socket Connect \n");
     return 1;
   };
@@ -130,19 +129,41 @@ int FTPsend(ftp *FTP, char *msg, int size) {
 int FTPread(ftp *FTP, char *msg, unsigned int size) {
   FILE *sock = fdopen(FTP->fd_socket, "r");
 
-  msg = malloc(size * sizeof(char));
+  memset(msg,0,size);
 
-  if ((msg = fgets(msg, 2048, sock)) != NULL) {
-    printf("Warning: Nothing wasn't read \n");
-    return 1;
-  }
+  do{
+    msg = fgets(msg, size, sock);
+    printf("READ %s\n",msg );
+  }while((!('1' <= msg[0] && msg[0] <= '5' ))|| msg[3] != ' ');
+
 
   return 0;
 }
 
-// TODO Mandar Disc pro servidor
-// fechar socket
-int FTPdisconnect() { return 0; }
+
+int FTPdisconnect(ftp * FTP) {
+
+  char msg[2048];
+
+  if(FTPread(FTP,msg,sizeof(msg))){
+    printf("Fail: canno disconetc account\n");
+    return 1;
+  }
+
+  sprintf(msg, "QUIT\r\n");
+
+  if(FTPsend(FTP,msg,strlen(msg))){
+    printf("Fail: cannnot send QUIT\n" );
+    return 1;
+  }
+
+
+  close(FTP->fd_socket);
+
+
+  return 0;
+
+ }
 
 int parseHost(char *link, char *host) {
   char tmpHost[32];
@@ -168,7 +189,99 @@ int parseHost(char *link, char *host) {
   return 1;
 }
 
-int ftpLogin(char *user, char *pass) { return 0; }
+int FTPlogin(ftp* FTP, char *user, char *pass) {
+
+  char msg[2048];
+
+  sprintf(msg,"USER %s \n",user);
+
+  if(FTPsend(FTP,msg,strlen(msg))){
+    printf("FAIL: Unable to send user name\n");
+    return 1;
+  }
+
+  printf("%s\n",msg);
+
+  if(FTPread(FTP,msg,sizeof(msg))){
+    printf("FAIL: Unable to get response \n");
+    return 1;
+  }
+
+  printf("%s\n",msg);
+
+  memset(msg,0,sizeof(msg));
+
+  sprintf(msg,"PASS %s \n",pass);
+  if(FTPsend(FTP,msg,strlen(msg))){
+    printf("FAIL: unable to send password \n");
+    return 1;
+  }
+
+
+  if(FTPread(FTP,msg,sizeof(msg))){
+    printf("FAIL: unable to get response password \n");
+    return 1;
+  }
+
+      printf("%s\n",msg);
+  return 0;
+}
+
+int FTPpasv(ftp * FTP){
+
+
+  char msg[2048] ;
+
+  sprintf(msg,"PASV\r\n");
+
+
+  if(FTPsend(FTP,msg,strlen(msg))){
+    printf("FAIL: unable to send PASV \n");
+    return 1;
+  }
+
+    printf("%s\n",msg);
+
+  if(FTPread(FTP,msg,sizeof(msg))){
+
+    printf("FAIL: unable to receive to enter in passive mode \n");
+    return 1;
+  }
+
+      printf("%s\n",msg);
+
+  unsigned int ip1,ip2,ip3,ip4;
+  int port1, port2;
+
+
+  if(sscanf(msg,"227 Entering Passive Mode(%d,%d,%d,%d,%d,%d)",&ip1,&ip2,&ip3,&ip4,&port1,&port2)){
+    printf("FAIL: sscanf");
+    return 1;
+  }
+  printf("F %s\n",msg);
+
+
+  int port = port1*256 + port2;
+
+  memset(msg, 0, sizeof(msg));
+
+  if (sprintf(msg, "%d.%d.%d.%d", ip1, ip2, ip3, ip4) < 0) {
+		printf("ERROR: ip address make error.\n");
+		return 1;
+	}
+
+  printf("IP %s \n", msg);
+  printf("PORT %d \n", port);
+
+  if((FTP->fd_data = connectSocket(msg,port)) < 0){
+    printf("FAIL: PASV connectSocket \n");
+    return 1;
+  }
+  return 0;
+}
+
+
+
 
 int main(int argc, char **argv) {
   if (argc != 2) {
@@ -188,8 +301,18 @@ int main(int argc, char **argv) {
   printf("IP: %s\n", ip);
 
   ftp FTP;
+  char user[32] = "";
+  char pass[32] = "";
+  char filename[250] = "/pub/robots.txt";
   FTPconnect(&FTP, ip, 21);
+  FTPlogin(&FTP, user, pass);
+  FTPpasv(&FTP);
+  FTPdownload(filename,&FTP);
+  FTPdisconnect(&FTP);
+
+
 
   free(ip);
+  free(host);
   return 0;
 }
