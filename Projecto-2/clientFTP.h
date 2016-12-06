@@ -9,6 +9,7 @@
 #include <netdb.h>
 #include <string.h>
 #include <regex.h>
+#include <errno.h>
 
 
 typedef struct ftp {
