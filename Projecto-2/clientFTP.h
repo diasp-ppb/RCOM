@@ -21,3 +21,5 @@ typedef struct ftp {
 
 static int connectSocket(const char * IP,int PORT);
 int FTPdownload(char * filename, ftp *ftp);
+int FTPread(ftp *FTP, char *msg, unsigned int size);
+int FTPsend(ftp *FTP, char *msg, int size);

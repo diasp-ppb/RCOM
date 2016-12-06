@@ -58,30 +58,33 @@ int validURL(char *url, unsigned int size) {
 
 int FTPdownload(char *filename, ftp *ftp) {
   FILE *file;
-
-  if (!(file = fopen(filename, "w"))) {
+  printf("filename: %s\n", filename);
+  if (!(file = fopen("1MB.zip", "w"))) {
     printf("Unable to open file.\n");
     return 1;
   }
   int bytesRead;
-  int bytesWrited;
-  int totalBytesWrited = 0;
+  int bytesWrote;
+  int totalBytesWrote = 0;
+
+  char reqMsg[64];
+  sprintf(reqMsg, "RETR %s\n", filename);
+  FTPsend(ftp, reqMsg, strlen(reqMsg));
 
   char buf[2048]; // TODO  not sure what size should be
 
   while ((bytesRead = read(ftp->fd_data, buf, sizeof(buf)))) {
-
     if (bytesRead < 0) {
       printf("Fail: Nothing to read\n");
       return 1;
     }
 
-    if ((bytesWrited = fwrite(buf, bytesRead, 1, file))) {
-      printf("Fail: write in file\n");
+    if (!(bytesWrote = fwrite(buf, bytesRead, 1, file))) {
+      printf("Fail: writen in file\n");
       return 1;
     }
 
-    totalBytesWrited += bytesWrited;
+    totalBytesWrote += bytesWrote;
   }
 
   fclose(file);
@@ -105,6 +108,13 @@ int FTPconnect(ftp *FTP, char *ip, int port) {
   FTP->fd_socket = socket_fd;
   FTP->fd_data = 0;
 
+  char msg[2048];
+  if(FTPread(FTP, msg, sizeof(msg)) != 0)
+  {
+    printf("error reading after connect\n");
+    return -1;
+  }
+  printf("Connect message: %s\n", msg);
   // 1*
   return 0;
 }
@@ -113,9 +123,9 @@ int FTPconnect(ftp *FTP, char *ip, int port) {
 int FTPsend(ftp *FTP, char *msg, int size) {
 
   int bytes;
-
-  if ((bytes = write(FTP->fd_socket, msg, size)) < 0) {
-    printf("Warning mensage wasnt read\n");
+  printf("SEND SEND: %s\n", msg);
+  if ((bytes = write(FTP->fd_socket, msg, size)) <= 0) {
+    printf("Warning mensage wasnt sent\n");
     return 1;
   }
   if (bytes != size) {
@@ -193,21 +203,21 @@ int FTPlogin(ftp* FTP, char *user, char *pass) {
 
   char msg[2048];
 
-  sprintf(msg,"USER %s \n",user);
+  sprintf(msg,"USER %s\n",user);
 
   if(FTPsend(FTP,msg,strlen(msg))){
     printf("FAIL: Unable to send user name\n");
     return 1;
   }
 
-  printf("%s\n",msg);
+  //printf("SEND  USER:   %s\n",msg);
 
   if(FTPread(FTP,msg,sizeof(msg))){
     printf("FAIL: Unable to get response \n");
     return 1;
   }
 
-  printf("%s\n",msg);
+//  printf("READ USER response:   %s\n",msg);
 
   memset(msg,0,sizeof(msg));
 
@@ -216,6 +226,7 @@ int FTPlogin(ftp* FTP, char *user, char *pass) {
     printf("FAIL: unable to send password \n");
     return 1;
   }
+  //printf("SEND PASS: %s\n", pass);
 
 
   if(FTPread(FTP,msg,sizeof(msg))){
@@ -232,7 +243,7 @@ int FTPpasv(ftp * FTP){
 
   char msg[2048] ;
 
-  sprintf(msg,"PASV\r\n");
+  sprintf(msg,"PASV\n");
 
 
   if(FTPsend(FTP,msg,strlen(msg))){
@@ -248,17 +259,16 @@ int FTPpasv(ftp * FTP){
     return 1;
   }
 
-      printf("%s\n",msg);
+      printf("PASV resp:\n%s\n",msg);
 
   unsigned int ip1,ip2,ip3,ip4;
   int port1, port2;
 
-
-  if(sscanf(msg,"227 Entering Passive Mode(%d,%d,%d,%d,%d,%d)",&ip1,&ip2,&ip3,&ip4,&port1,&port2)){
-    printf("FAIL: sscanf");
+              // 227 Entering Passive Mode (90,130,70,73,91,233).
+  if(sscanf(msg,"227 Entering Passive Mode (%d,%d,%d,%d,%d,%d)",&ip1,&ip2,&ip3,&ip4,&port1,&port2) < 0){
+    printf("FAIL: sscanf\n");
     return 1;
   }
-  printf("F %s\n",msg);
 
 
   int port = port1*256 + port2;
@@ -301,9 +311,9 @@ int main(int argc, char **argv) {
   printf("IP: %s\n", ip);
 
   ftp FTP;
-  char user[32] = "";
-  char pass[32] = "";
-  char filename[250] = "/pub/robots.txt";
+  char user[60] = "anonymous";
+  char pass[60] = "up2014@fe.up.pt";
+  char filename[250] = "1MB.zip";
   FTPconnect(&FTP, ip, 21);
   FTPlogin(&FTP, user, pass);
   FTPpasv(&FTP);
