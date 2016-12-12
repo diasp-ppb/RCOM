@@ -37,7 +37,7 @@ int validURL(char *url, unsigned int size) {
 
     if(size < 7)
     {
-        printf("invalid URL size \n");
+        printf("invalid URL size - %s - %d \n", url, size);
         return 1;
     }  
 
@@ -405,7 +405,7 @@ int main(int argc, char **argv) {
     }
 
     int mode;
-    if((mode = validURL(argv[1], sizeof(argv[1]))) < 2) {
+    if((mode = validURL(argv[1], strlen(argv[1]))) < 2) {
          exit(1);
     }
 
@@ -414,7 +414,7 @@ int main(int argc, char **argv) {
     
     
 
-    char link[64];
+    char link[128];
     strcpy(link, argv[1]);
 
     char *ip = malloc(64);
