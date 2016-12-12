@@ -28,13 +28,42 @@ static int connectSocket(const char *IP, int PORT) {
     return sockfd;
 }
 
+ char* anonymous = "ftp://([A-Za-z0-9.~-])+/([[A-Za-z0-9/~._-])+";
+ char* loggInfo = "ftp://([([A-Za-z0-9])*:([A-Za-z0-9])*@])*([A-Za-z0-9.~-])+/([[A-Za-z0-9/~._-])+";
+
+
 int validURL(char *url, unsigned int size) {
+
+
+    if(size < 7)
+    {
+        printf("invalid URL size \n");
+        return 1;
+    }  
 
     regex_t regularExpression;
 
+    int match  = sizeof(url);
+    regmatch_t pmatch[match];
+
+
+    char * selectExpression;
+
+    int userMode;
+
+    if(url[6] == '[')
+    {
+        selectExpression = loggInfo;
+        userMode = 2;
+    }
+    else
+    {
+        selectExpression = anonymous;
+        userMode = 3;
+    }
     int retReg = regcomp(
         &regularExpression,
-        "ftp://([a-zA-Z0-9])*:([a-zA-Z0-9])*+@+[a-zA-Z0-9]*+/+[a-zA-Z0-9._~@]*",
+        selectExpression,
         REG_EXTENDED);
 
     if (retReg != 0) {
@@ -43,17 +72,12 @@ int validURL(char *url, unsigned int size) {
     }
 
     int result;
-    if (!(result = regexec(&regularExpression, url, 0, NULL, 0))) {
-        return 0;
-    } else if (result == REG_NOMATCH) {
-        printf("Fail: Invalid URL \n");
+    if (0 != (result = regexec(&regularExpression, url ,match , pmatch, REG_EXTENDED))) {
+        printf("URL coundnt execute \n");   
+        printf("%d",result);
         return 1;
-    } else {
-        printf("Fail: Cant validate URL\n");
-        return 1;
-    }
-
-    return 0;
+    } 
+    return userMode;
 }
 
 int FTPdownload(char *path, char *filename, ftp *ftp) {
@@ -262,7 +286,7 @@ int FTPlogin(ftp* FTP, char *user, char *pass) {
 
     memset(msg,0,sizeof(msg));
 
-    sprintf(msg,"PASS %s \n",pass);
+    sprintf(msg,"PASS %s\n",pass);
     if(FTPsend(FTP,msg,strlen(msg))){
         printf("FAIL: unable to send password \n");
         return 1;
@@ -330,12 +354,65 @@ int FTPpasv(ftp * FTP){
 
 
 
+int parseNameAndPass(char *link,char * user, char * pass){
+    int len = strlen(link);
+    int index = 0;
+    while( index < len && link[index] != '[')
+    {
+        index++;
+    } 
+
+    char tempUser[64];
+    char tempPass[64];
+
+    index++;
+    int i = 0;
+    while(index < len && link[index] != ':' && i < 64)
+    {
+        tempUser[i] = link[index];
+        index++;
+        i++;
+    }
+
+    tempUser[i] = '\0';
+
+    index++;
+    i=0;
+    while(index < len && link[index] != '@' && i < 64)
+    {
+        tempPass[i] = link[index];
+        index++;
+        i++;
+    }
+
+    tempPass[i] = '\0';
+    
+    strcpy(user,tempUser);
+    strcpy(pass,tempPass);
+
+    printf("%s \n",tempUser);
+    printf("%s \n",tempPass);
+
+
+    return 0;
+} 
+
 
 int main(int argc, char **argv) {
     if (argc != 2) {
-        printf("usage: ./clientFTP [<user>:<password>@]<host>/<url-path>\n");
+        printf("usage: ./clientFTP ftp://[<user>:<password>@]<host>/<url-path>\n");
         exit(1);
     }
+
+    int mode;
+    if((mode = validURL(argv[1], sizeof(argv[1]))) < 2) {
+         exit(1);
+    }
+
+
+
+    
+    
 
     char link[64];
     strcpy(link, argv[1]);
@@ -347,18 +424,42 @@ int main(int argc, char **argv) {
 
     parseLink(link, host, path, file);
 
+
+    getIP(host, ip);
+
+
+
+
     printf("IP: %s\n", ip);
     printf("host: %s\n", host);
     printf("path: %s\n", path);
     printf("file: %s\n", file);
 
 
-    getIP(host, ip);
+    char * user;
+    char * pass;
 
+
+    //anonymous 
+    if(mode == 3){
+
+    user = "anonymous";
+    pass = "up2014@fe.up.pt";
+
+    }
+    else if(mode == 2){
+    
+    user = malloc(sizeof(char)*64);
+    pass = malloc(sizeof(char)*64);
+
+    parseNameAndPass(link,user,pass);
+
+
+    }
+
+    
     ftp FTP;
-    char user[60] = "anonymous";
-    char pass[60] = "up2014@fe.up.pt";
-//    char filename[250] = "ubuntu-16.10-desktop-amd64.iso";
+
     FTPconnect(&FTP, ip, 21);
     FTPlogin(&FTP, user, pass);
     FTPpasv(&FTP);
