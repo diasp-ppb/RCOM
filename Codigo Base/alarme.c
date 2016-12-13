@@ -6,7 +6,7 @@ int flag=1, conta=1;
 
 void atende()                   // atende alarme
 {
-	printf("alarme # %d\n", conta);
+	printf("tinóní tinóní # %d\n", conta);
 	flag=1;
 	conta++;
 }
